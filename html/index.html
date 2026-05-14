@@ -3,18 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Centro de Monitoreo - NQN Petrol</title>
+    <title>Centro de Monitoreo · NQN Petrol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main:     #121212;
-            --bg-sidebar:  #1f1f1f;
-            --bg-card:     #1a1a1a;
-            --bg-card-hover: #252525;
-            --border:      #2f2f2f;
-            --text:        #e8e8e8;
-            --text-muted:  #888;
-            --accent:      #1e88e5;
-            --error:       #e57373;
+            /* Paleta inspirada en el logo NQN Petrol */
+            --color-bg:           #f4f6f9;
+            --color-surface:      #ffffff;
+            --color-surface-alt:  #eef1f5;
+            --color-border:       #d8dee7;
+            --color-border-soft:  #e7ebf1;
+            --color-text:         #1a2238;
+            --color-text-muted:   #6b7488;
+            --color-text-soft:    #8a93a6;
+
+            --color-primary:      #0b3a78;   /* azul oscuro del "NQN" */
+            --color-primary-hover:#0e4a99;
+            --color-accent:       #ff6b1f;   /* naranja del símbolo */
+            --color-live:         #16a34a;   /* verde "en vivo" */
+            --color-error:        #dc2626;
+
+            --shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
+            --shadow-md:  0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+            --shadow-lg:  0 4px 16px rgba(15, 23, 42, 0.08);
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+
+            --topbar-h: 64px;
         }
 
         * { box-sizing: border-box; }
@@ -23,129 +42,195 @@
             margin: 0;
             padding: 0;
             height: 100%;
-            background: var(--bg-main);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            -webkit-font-smoothing: antialiased;
             overflow: hidden;
         }
 
         body {
             display: flex;
-        }
-
-        /* ===== Sidebar ===== */
-        .sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: var(--bg-sidebar);
-            padding: 18px;
-            display: flex;
             flex-direction: column;
-            gap: 18px;
-            overflow-y: auto;
-            border-right: 1px solid var(--border);
         }
 
-        .logo {
-            width: 100%;
-            max-height: 60px;
+        /* ===== Topbar ===== */
+        .topbar {
+            height: var(--topbar-h);
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 24px;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .brand img {
+            height: 36px;
             object-fit: contain;
-            object-position: left center;
+            display: block;
         }
 
-        .sidebar h2 {
-            margin: 0;
-            font-size: 11px;
+        .brand-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--color-border);
+        }
+
+        .brand-title {
+            font-size: 14px;
             font-weight: 600;
+            color: var(--color-text);
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .brand-subtitle {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--color-text-muted);
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--text-muted);
+            letter-spacing: 0.6px;
+            margin-top: 2px;
         }
 
         .selector {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .selector label {
-            display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.15s;
-            user-select: none;
-            font-size: 14px;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: thin;
         }
-        .selector label:hover { background: var(--bg-card-hover); }
-        .selector input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: var(--accent);
+        .selector::-webkit-scrollbar { height: 4px; }
+        .selector::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
-            margin: 0;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .chip:hover {
+            border-color: var(--color-primary);
+            color: var(--color-text);
+            background: var(--color-surface-alt);
+        }
+        .chip.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #fff;
+        }
+        .chip.active:hover {
+            background: var(--color-primary-hover);
+            border-color: var(--color-primary-hover);
+        }
+        .chip .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+        }
+        .chip.active .dot {
+            background: #fff;
+            opacity: 1;
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
         }
 
         .actions {
             display: flex;
             gap: 6px;
+            flex-shrink: 0;
+            padding-left: 12px;
+            border-left: 1px solid var(--color-border);
         }
         .actions button {
-            flex: 1;
-            padding: 7px 10px;
-            background: var(--bg-card);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
+            padding: 8px 14px;
+            background: var(--color-surface);
+            color: var(--color-text-muted);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
             font-family: inherit;
-            transition: background 0.15s;
-        }
-        .actions button:hover { background: var(--bg-card-hover); }
-
-        .footer-info {
-            margin-top: auto;
             font-size: 12px;
-            line-height: 1.5;
-            color: var(--text-muted);
-            border-top: 1px solid var(--border);
-            padding-top: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .actions button:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            background: var(--color-surface-alt);
         }
 
         /* ===== Grid ===== */
         .grid {
             flex: 1;
             display: grid;
-            gap: 6px;
-            padding: 6px;
-            background: #000;
+            gap: 12px;
+            padding: 16px;
             overflow: hidden;
-            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            grid-template-columns: repeat(var(--cols, 1), 1fr);
             grid-auto-rows: 1fr;
         }
         .grid.empty {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-muted);
-            font-size: 15px;
-            text-align: center;
             padding: 40px;
+        }
+
+        .empty-state {
+            max-width: 360px;
+            text-align: center;
+            color: var(--color-text-muted);
+        }
+        .empty-state .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            opacity: 0.4;
+        }
+        .empty-state h3 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        .empty-state p {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .camara {
             background: #0a0a0a;
             position: relative;
-            border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-md);
             overflow: hidden;
             min-width: 0;
             min-height: 0;
+            box-shadow: var(--shadow-md);
         }
 
         .camara video {
@@ -158,53 +243,99 @@
 
         .titulo-cam {
             position: absolute;
-            top: 8px;
-            left: 8px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
+            top: 12px;
+            left: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(10, 10, 10, 0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
             z-index: 10;
             pointer-events: none;
-            backdrop-filter: blur(4px);
+        }
+        .titulo-cam .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--color-text-soft);
+            transition: background 0.2s;
+        }
+        .titulo-cam.live .live-dot {
+            background: var(--color-live);
+            box-shadow: 0 0 8px rgba(22, 163, 74, 0.6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .titulo-cam.error .live-dot {
+            background: var(--color-error);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%      { opacity: 0.4; }
         }
 
         .estado {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: var(--text-muted);
-            font-size: 14px;
-            text-align: center;
-            padding: 8px 14px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 4px;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #c8cdd6;
+            font-size: 13px;
             pointer-events: none;
+            background: rgba(10, 10, 10, 0.4);
         }
-        .estado.error { color: var(--error); }
         .estado.hidden { display: none; }
+        .estado.error { color: #f0a8a8; }
+
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 720px) {
+            .topbar { padding: 0 14px; gap: 14px; height: auto; min-height: var(--topbar-h); flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+            .brand-divider, .brand-title-wrap { display: none; }
+            .actions { padding-left: 0; border-left: none; }
+            .grid { padding: 8px; gap: 8px; }
+            .titulo-cam { font-size: 11px; padding: 4px 8px; }
+        }
     </style>
 </head>
 <body>
 
-    <aside class="sidebar">
-        <img src="images.png" alt="NQN Petrol" class="logo">
+    <header class="topbar">
+        <div class="brand">
+            <img src="images.png" alt="NQN Petrol">
+            <div class="brand-divider"></div>
+            <div class="brand-title-wrap">
+                <div class="brand-title">Centro de Monitoreo</div>
+                <div class="brand-subtitle">Streaming en vivo</div>
+            </div>
+        </div>
 
-        <h2>Cámaras</h2>
         <div class="selector" id="selector"></div>
 
         <div class="actions">
-            <button id="btn-todas">Todas</button>
-            <button id="btn-ninguna">Ninguna</button>
+            <button id="btn-todas" title="Mostrar todas las cámaras">Todas</button>
+            <button id="btn-ninguna" title="Ocultar todas">Ninguna</button>
         </div>
-
-        <div class="footer-info">
-            <strong>Centro de Monitoreo</strong><br>
-            Streaming WebRTC en vivo
-        </div>
-    </aside>
+    </header>
 
     <main class="grid" id="grid"></main>
 
@@ -212,24 +343,39 @@
         // ==================================================================
         // Configuración de cámaras
         // ==================================================================
-        // Para agregar/sacar cámaras: editá este array. El path debe
+        // Para agregar/sacar cámaras: editá este array. El `path` debe
         // coincidir con lo declarado en mediamtx.yml y con la URL que
         // usa el publisher en FlightHub.
         const CAMARAS = [
             { path: "dock-cam-dock-1",       titulo: "Dock 1" },
-            { path: "dron-cam-q1-angular",   titulo: "Q1 - Angular" },
-            { path: "dron-cam-q1-infrarojo", titulo: "Q1 - Infrarojo" },
-            { path: "dron-cam-q1-zoom",      titulo: "Q1 - Zoom" },
+            { path: "dron-cam-q1-angular",   titulo: "Q1 · Angular" },
+            { path: "dron-cam-q1-infrarojo", titulo: "Q1 · Infrarojo" },
+            { path: "dron-cam-q1-zoom",      titulo: "Q1 · Zoom" },
         ];
 
         const STORAGE_KEY = "centro-monitoreo:visibles";
-        const RETRY_MS = 4000;          // tiempo entre reintentos si una conexión falla
-        const ICE_TIMEOUT_MS = 4000;    // tope para gathering de candidatos ICE
+        const RETRY_MS = 4000;
+        const ICE_TIMEOUT_MS = 4000;
+
+        // ==================================================================
+        // Compatibilidad
+        // ==================================================================
+        if (typeof RTCPeerConnection === "undefined") {
+            document.body.innerHTML =
+                '<div style="padding:40px;font-family:sans-serif;color:#dc2626">' +
+                '<h2>Navegador no compatible</h2>' +
+                '<p>Este dashboard requiere soporte de WebRTC. Usá Chrome, Edge o Firefox actualizados.</p>' +
+                '</div>';
+            throw new Error("WebRTC no soportado");
+        }
 
         // ==================================================================
         // Estado
         // ==================================================================
-        // path -> { pc: RTCPeerConnection|null, retryTimer: number|null }
+        // path -> { pc, retryTimer, generation }
+        // "generation" es un contador que se incrementa cada vez que se
+        // reconecta el path. Permite descartar respuestas tardías de un
+        // intento previo cuando el usuario hace toggle on/off rápido.
         const conexiones = new Map();
         const visibles   = new Set(cargarVisibles());
 
@@ -238,7 +384,10 @@
                 const raw = localStorage.getItem(STORAGE_KEY);
                 if (raw) {
                     const arr = JSON.parse(raw);
-                    if (Array.isArray(arr)) return arr;
+                    if (Array.isArray(arr)) {
+                        // Filtrar por las que existen actualmente
+                        return arr.filter(p => CAMARAS.some(c => c.path === p));
+                    }
                 }
             } catch (_) { /* fallback */ }
             return CAMARAS.map(c => c.path);
@@ -251,57 +400,81 @@
         }
 
         // ==================================================================
-        // Sidebar
+        // Topbar (chips de selección)
         // ==================================================================
-        function renderSidebar() {
+        function renderSelector() {
             const cont = document.getElementById("selector");
             cont.innerHTML = "";
             for (const cam of CAMARAS) {
-                const label = document.createElement("label");
-                const input = document.createElement("input");
-                input.type = "checkbox";
-                input.checked = visibles.has(cam.path);
-                input.addEventListener("change", () => {
-                    if (input.checked) visibles.add(cam.path);
-                    else                visibles.delete(cam.path);
-                    guardarVisibles();
-                    renderGrid();
-                });
-                const span = document.createElement("span");
-                span.textContent = cam.titulo;
-                label.appendChild(input);
-                label.appendChild(span);
-                cont.appendChild(label);
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "chip" + (visibles.has(cam.path) ? " active" : "");
+                chip.dataset.path = cam.path;
+                chip.innerHTML = `<span class="dot"></span><span>${cam.titulo}</span>`;
+                chip.addEventListener("click", () => toggle(cam.path));
+                cont.appendChild(chip);
             }
+        }
+
+        function toggle(path) {
+            if (visibles.has(path)) visibles.delete(path);
+            else                    visibles.add(path);
+            guardarVisibles();
+            renderSelector();
+            renderGrid();
         }
 
         document.getElementById("btn-todas").addEventListener("click", () => {
             CAMARAS.forEach(c => visibles.add(c.path));
             guardarVisibles();
-            renderSidebar();
+            renderSelector();
             renderGrid();
         });
         document.getElementById("btn-ninguna").addEventListener("click", () => {
             visibles.clear();
             guardarVisibles();
-            renderSidebar();
+            renderSelector();
             renderGrid();
         });
 
         // ==================================================================
-        // Grid
+        // Grid layout
         // ==================================================================
+        // Decide cuántas columnas usar para N cámaras visibles, priorizando
+        // que cada celda quede con ratio razonablemente horizontal.
+        function columnasParaN(n) {
+            if (n <= 1) return 1;
+            if (n === 2) return 2;
+            if (n === 3) return 3;
+            if (n === 4) return 2;
+            if (n <= 6) return 3;
+            if (n <= 9) return 3;
+            return 4;
+        }
+
         function renderGrid() {
             const grid = document.getElementById("grid");
+            const n = visibles.size;
 
-            // Sin nada seleccionado -> mensaje vacío
-            if (visibles.size === 0) {
+            if (n === 0) {
                 cerrarTodo();
                 grid.classList.add("empty");
-                grid.innerHTML = "<div>Marcá una cámara en la barra lateral para verla.</div>";
+                grid.style.removeProperty("--cols");
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">○</div>
+                        <h3>Sin cámaras seleccionadas</h3>
+                        <p>Tocá una cámara en la barra superior para verla.</p>
+                    </div>`;
                 return;
             }
-            grid.classList.remove("empty");
+
+            if (grid.classList.contains("empty")) {
+                grid.classList.remove("empty");
+                grid.innerHTML = "";
+            }
+
+            grid.style.setProperty("--cols", columnasParaN(n));
 
             // 1) Sacar las celdas que dejaron de estar visibles
             for (const celda of [...grid.querySelectorAll(".camara")]) {
@@ -312,10 +485,9 @@
                 }
             }
 
-            // 2) Agregar las nuevas, manteniendo el orden de CAMARAS
+            // 2) Agregar las nuevas (siguiendo el orden de CAMARAS)
             for (const cam of CAMARAS) {
                 if (!visibles.has(cam.path)) continue;
-
                 let celda = grid.querySelector(`[data-path="${cam.path}"]`);
                 if (!celda) {
                     celda = crearCelda(cam);
@@ -324,7 +496,7 @@
                 }
             }
 
-            // 3) Reordenar para que sigan el orden de CAMARAS
+            // 3) Reordenar
             for (const cam of CAMARAS) {
                 const celda = grid.querySelector(`[data-path="${cam.path}"]`);
                 if (celda) grid.appendChild(celda);
@@ -336,26 +508,61 @@
             celda.className = "camara";
             celda.dataset.path = cam.path;
             celda.innerHTML = `
-                <div class="titulo-cam"></div>
+                <div class="titulo-cam">
+                    <span class="live-dot"></span>
+                    <span class="texto"></span>
+                </div>
                 <video autoplay muted playsinline></video>
-                <div class="estado">Conectando...</div>
+                <div class="estado">
+                    <div class="spinner"></div>
+                    <span class="msg">Conectando…</span>
+                </div>
             `;
-            celda.querySelector(".titulo-cam").textContent = cam.titulo;
+            celda.querySelector(".titulo-cam .texto").textContent = cam.titulo;
             return celda;
+        }
+
+        function setEstado(celda, modo, mensaje) {
+            // modo: "loading" | "live" | "error" | "hidden"
+            const estadoEl = celda.querySelector(".estado");
+            const tituloEl = celda.querySelector(".titulo-cam");
+            const msgEl    = estadoEl.querySelector(".msg");
+            const spinner  = estadoEl.querySelector(".spinner");
+
+            tituloEl.classList.remove("live", "error");
+
+            if (modo === "live") {
+                estadoEl.classList.add("hidden");
+                tituloEl.classList.add("live");
+                return;
+            }
+
+            estadoEl.classList.remove("hidden", "error");
+            if (modo === "loading") {
+                spinner.style.display = "block";
+                msgEl.textContent = mensaje || "Conectando…";
+            } else if (modo === "error") {
+                spinner.style.display = "none";
+                estadoEl.classList.add("error");
+                tituloEl.classList.add("error");
+                msgEl.textContent = mensaje || "Sin señal";
+            }
         }
 
         // ==================================================================
         // Cliente WHEP (non-trickle)
         // ==================================================================
         async function conectar(path, celda) {
-            // Cancelar reintentos pendientes para este path
+            // Limpiar reintentos previos
             const prev = conexiones.get(path);
             if (prev?.retryTimer) clearTimeout(prev.retryTimer);
 
-            const videoEl  = celda.querySelector("video");
-            const estadoEl = celda.querySelector(".estado");
-            estadoEl.classList.remove("error", "hidden");
-            estadoEl.textContent = "Conectando…";
+            // Generación: descartar respuestas tardías
+            const generation = (prev?.generation || 0) + 1;
+            conexiones.set(path, { pc: null, retryTimer: null, generation });
+
+            const videoEl = celda.querySelector("video");
+            setEstado(celda, "loading", "Conectando…");
 
             let pc = null;
             try {
@@ -363,14 +570,16 @@
                 pc.addTransceiver("video", { direction: "recvonly" });
 
                 pc.ontrack = (ev) => {
+                    if (!esActual(path, generation)) return;
                     const [stream] = ev.streams;
                     if (videoEl.srcObject !== stream) {
                         videoEl.srcObject = stream;
                     }
-                    estadoEl.classList.add("hidden");
+                    setEstado(celda, "live");
                 };
 
                 pc.oniceconnectionstatechange = () => {
+                    if (!esActual(path, generation)) return;
                     const s = pc.iceConnectionState;
                     if (s === "failed" || s === "disconnected" || s === "closed") {
                         if (visibles.has(path)) {
@@ -380,8 +589,10 @@
                 };
 
                 const offer = await pc.createOffer();
+                if (!esActual(path, generation)) return cleanup(pc);
                 await pc.setLocalDescription(offer);
                 await esperarIceComplete(pc);
+                if (!esActual(path, generation)) return cleanup(pc);
 
                 const resp = await fetch(`/webrtc/${path}/whep`, {
                     method: "POST",
@@ -389,52 +600,65 @@
                     body: pc.localDescription.sdp,
                 });
 
+                if (!esActual(path, generation)) return cleanup(pc);
+
                 if (!resp.ok) {
-                    const body = await resp.text().catch(() => "");
-                    throw new Error(`HTTP ${resp.status}${body ? " - " + body.slice(0, 80) : ""}`);
+                    const txt = await resp.text().catch(() => "");
+                    const motivo = resp.status === 404 || /not found/i.test(txt)
+                        ? "Sin señal"
+                        : `Error ${resp.status}`;
+                    throw new Error(motivo);
                 }
 
                 const answerSdp = await resp.text();
                 await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
-                conexiones.set(path, { pc, retryTimer: null });
+                if (!esActual(path, generation)) return cleanup(pc);
+
+                // Guardar la PC actualizada
+                const conn = conexiones.get(path);
+                if (conn) conn.pc = pc;
             } catch (err) {
-                if (pc) try { pc.close(); } catch (_) {}
-                console.warn(`[${path}]`, err.message || err);
-                programarReintento(path, celda, "Sin señal");
+                cleanup(pc);
+                if (!esActual(path, generation)) return;
+                console.warn(`[${path}]`, err?.message || err);
+                programarReintento(path, celda, err?.message || "Sin señal");
             }
         }
 
+        function esActual(path, generation) {
+            const conn = conexiones.get(path);
+            return conn && conn.generation === generation && visibles.has(path);
+        }
+
+        function cleanup(pc) {
+            if (pc) try { pc.close(); } catch (_) {}
+        }
+
         function programarReintento(path, celda, mensaje) {
-            // Limpiar PC actual
             const prev = conexiones.get(path);
-            if (prev?.pc) {
-                try { prev.pc.close(); } catch (_) {}
-            }
+            if (prev?.pc) cleanup(prev.pc);
             if (prev?.retryTimer) clearTimeout(prev.retryTimer);
 
-            const estadoEl = celda.querySelector(".estado");
-            const videoEl  = celda.querySelector("video");
-            estadoEl.textContent = `${mensaje} · reintentando…`;
-            estadoEl.classList.add("error");
-            estadoEl.classList.remove("hidden");
+            const videoEl = celda.querySelector("video");
             videoEl.srcObject = null;
+            setEstado(celda, "error", `${mensaje} · reintentando…`);
 
             const t = setTimeout(() => {
-                if (visibles.has(path)) {
-                    conectar(path, celda);
-                }
+                if (visibles.has(path)) conectar(path, celda);
             }, RETRY_MS);
 
-            conexiones.set(path, { pc: null, retryTimer: t });
+            conexiones.set(path, {
+                pc: null,
+                retryTimer: t,
+                generation: (prev?.generation || 0),
+            });
         }
 
         function desconectar(path) {
             const conn = conexiones.get(path);
             if (!conn) return;
-            if (conn.pc) {
-                try { conn.pc.close(); } catch (_) {}
-            }
+            if (conn.pc) cleanup(conn.pc);
             if (conn.retryTimer) clearTimeout(conn.retryTimer);
             conexiones.delete(path);
         }
@@ -453,7 +677,6 @@
                     }
                 };
                 pc.addEventListener("icegatheringstatechange", onChange);
-                // Fallback: si nunca llega a "complete" igual mandamos el offer
                 setTimeout(() => {
                     pc.removeEventListener("icegatheringstatechange", onChange);
                     resolve();
@@ -464,7 +687,7 @@
         // ==================================================================
         // Boot
         // ==================================================================
-        renderSidebar();
+        renderSelector();
         renderGrid();
 
         window.addEventListener("beforeunload", cerrarTodo);
