@@ -49,7 +49,12 @@ rtmpEncryption: "no"
 webrtc: true
 webrtcAddress: :8889
 webrtcAllowOrigins: ["https://panel.dronefieldoperation.cloud"]
-webrtcTrustedProxies: [127.0.0.1, ::1, 172.16.0.0/12]
+# webrtcTrustedProxies vacío a propósito: queremos que MediaMTX use SIEMPRE
+# la IP del socket TCP (127.0.0.1 cuando viene por nginx) para evaluar las
+# reglas de IP en authInternalUsers. Si confiamos en X-Forwarded-For,
+# MediaMTX tomaría la IP pública del cliente y la regla "user: any" con
+# ips privadas no matchearía -> "failed to authenticate".
+webrtcTrustedProxies: []
 webrtcLocalUDPAddress: :8189
 webrtcIPsFromInterfaces: true
 webrtcAdditionalHosts: [panel.dronefieldoperation.cloud]

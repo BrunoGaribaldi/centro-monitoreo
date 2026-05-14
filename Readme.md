@@ -61,8 +61,10 @@ Lo que pasa en orden:
    "path" identificado por un nombre (`dron1`, `dron2`).
 3. Un operador abre `https://panel.dronefieldoperation.cloud` en el
    navegador.
-4. El **nginx del host** termina el TLS, valida basic auth y pasa la
-   petición al container del dashboard, que devuelve el HTML.
+4. El **nginx del host** termina el TLS y pasa la petición al container
+   del dashboard, que devuelve el HTML. **(El dashboard está público en
+   etapa de pruebas — sin auth a nivel HTTP. Ver §12 para la deuda
+   técnica.)**
 5. El HTML contiene `<iframe src="/webrtc/dron1/">`. El navegador
    pide ese iframe al mismo nginx, que lo redirige a MediaMTX.
 6. MediaMTX sirve un reproductor mínimo que negocia una sesión WebRTC
@@ -331,11 +333,16 @@ versiones de MediaMTX < 1.18 este campo se llamaba `webrtcAllowOrigin`
 (plural, array). Si hacés downgrade, hay que volver al nombre viejo.
 
 ```yaml
-webrtcTrustedProxies: [127.0.0.1, ::1, 172.16.0.0/12]
+webrtcTrustedProxies: []
 ```
-Le decimos a MediaMTX que confíe en los headers `X-Forwarded-*` cuando
-vienen de estas IPs. Es para que los logs muestren la IP real del
-cliente (que llega vía nginx) y no la del proxy.
+**Vacío a propósito**. Si lo poblamos con `127.0.0.1`, MediaMTX
+confiaría en el `X-Forwarded-For` que envía nginx y tomaría la IP
+pública del cliente como la "IP origen". Pero eso rompe la regla
+`user: any` con `ips: [127.0.0.1, redes privadas]`: una IP pública
+no matchea, y MediaMTX responde "authentication failed". Dejándolo
+vacío, MediaMTX siempre usa la IP del socket TCP (que es 127.0.0.1
+cuando viene por nginx) y matchea la regla. La trazabilidad de IPs
+reales queda en los logs de nginx, que sí ven al cliente.
 
 ```yaml
 webrtcLocalUDPAddress: :8189
@@ -381,47 +388,42 @@ publique en esta ruta". `record: false` = no guardamos en disco.
 ### 6.3. `nginxconfig.txt` (el nginx del host)
 
 No es un archivo de config, son **las instrucciones** para configurar
-el nginx que ya tiene el servidor cloud. Tiene 7 pasos:
+el nginx que ya tiene el servidor cloud. El despliegue va en dos
+fases para resolver el huevo-y-gallina del SSL (no se puede declarar
+`listen 443 ssl` sin tener certificados, y para tener certificados
+hace falta nginx funcionando):
 
-1. **Verificar módulo stream** (`nginx -V | grep stream`) — necesario
-   solo si en el futuro querés que el RTMP también pase por nginx.
-   En el setup actual MediaMTX expone 1935 directo y no hace falta.
+1. **FASE 1** — Sitio solo HTTP en `/etc/nginx/sites-available/drones.conf`
+   con dos `location`:
 
-2. **Crear archivo de contraseñas** con `htpasswd`. Es lo que usa la
-   directiva `auth_basic_user_file` para validar credenciales.
-
-3. **Stream block** — comentado, solo si en algún momento se decide
-   pasar el RTMP por nginx.
-
-4. **El sitio en `/etc/nginx/sites-available/drones.conf`** — dos
-   `server` blocks:
-
-   - El primero escucha en puerto **80** y redirige todo a HTTPS.
-     Excepto las URLs de `/.well-known/acme-challenge/`, que necesita
-     certbot para validar el dominio cuando renueva certificados.
-
-   - El segundo escucha en **443** con TLS, valida basic auth, y tiene
-     dos `location`:
-
-     - `location /` → proxy al container del dashboard.
-     - `location /webrtc/` → proxy a MediaMTX para la señalización
-       WebRTC. La directiva `rewrite ^/webrtc/(.*)$ /$1 break;` quita
-       el prefijo `/webrtc/` antes de mandarlo a MediaMTX (MediaMTX
-       espera URLs como `/dron1/whep`, no `/webrtc/dron1/whep`).
+   - `location /` → proxy al container del dashboard (`127.0.0.1:18082`).
+   - `location /webrtc/` → proxy a MediaMTX (`127.0.0.1:8889`) para la
+     señalización WebRTC. Detalles:
+     - `rewrite ^/webrtc/(.*)$ /$1 break;` quita el prefijo `/webrtc/`
+       antes de mandarlo a MediaMTX (MediaMTX espera URLs como
+       `/dron1/whep`, no `/webrtc/dron1/whep`).
+     - `proxy_set_header Authorization "";` — limpia el header de auth
+       que pudiera venir del browser (ver §11 "Gotchas").
      - `proxy_http_version 1.1` + `Upgrade` + `Connection "upgrade"`:
-       habilita WebSockets, que WHEP usa para algunas implementaciones.
+       habilita WebSockets, que WHEP usa en algunas implementaciones.
      - `proxy_read_timeout 86400`: 24 horas. WebRTC mantiene una
-       conexión HTTP larga; sin esto, nginx la cortaría a los 60
-       segundos por defecto.
+       conexión HTTP larga; sin esto, nginx la cortaría a los 60s.
      - `proxy_buffering off`: streaming, no podemos esperar a llenar
        buffers.
 
-5. **Activar el sitio** (symlink + `nginx -t` + `reload`).
+2. **Firewall** (UFW): abrir 80, 443, 1935 TCP y 8189 UDP.
 
-6. **Certbot** emite el certificado y, si elegís opción 2, deja el
-   redirect HTTP→HTTPS automático.
+3. **FASE 2** — `certbot --nginx -d panel.dronefieldoperation.cloud`.
+   Elegir opción 2 cuando pregunte por redirect HTTP→HTTPS. Certbot
+   agrega automáticamente el bloque `:443` con los certificados llenos
+   y convierte el `:80` en redirect 301.
 
-7. **Firewall** (UFW): abrir 80, 443, 1935 TCP y 8189 UDP.
+4. **Renovación automática**: el paquete certbot deja instalado un
+   timer systemd. Verificable con `systemctl list-timers | grep certbot`
+   y `sudo certbot renew --dry-run`.
+
+> El dashboard queda **público** (sin auth a nivel HTTP) en esta etapa
+> de pruebas. Ver §12 para la deuda técnica de auth real.
 
 ### 6.4. `html/index.html`
 
@@ -515,7 +517,7 @@ Abrí el dashboard y deberías ver una grilla de colores moviéndose.
 | Logs MediaMTX           | `docker logs -f mediamtx_drones`                                     |
 | Publicación llegó       | En los logs: `[RTMP] [conn] opened` + `[path dron1] [publisher] ...` |
 | HTTPS válido            | Candadito en el navegador, sin warning                               |
-| Basic auth activo       | Te pide usuario/clave al entrar al dominio                           |
+| Dashboard accesible     | Abre directo, sin pedir credenciales (modo prueba sin auth)          |
 | Dashboard carga         | Ves la grilla con los iframes                                        |
 | Video llega al navegador| Ves la imagen del dron en `<iframe>`. Si ves "loading" eterno → ICE  |
 
@@ -600,24 +602,41 @@ específico (p.ej. `bluenviron/mediamtx:1.18.1` en el
 `docker-compose.yml`) en vez de `latest`, para que un upgrade no
 sorpresivo no rompa la config un día random.
 
+### MediaMTX rechazando reads desde el navegador con "authentication failed"
+
+Síntoma: los iframes muestran `{"status":"error","error":"authentication error"}`
+y en los logs de MediaMTX aparece:
+
+```
+INF [WebRTC] connection <ip-publica-cliente>:<port> failed to authenticate: authentication failed
+```
+
+Causa: `webrtcTrustedProxies` en `mediamtx.yml` incluía `127.0.0.1`
+(la IP de nginx). MediaMTX por eso confiaba en el `X-Forwarded-For`
+que nginx le mandaba y tomaba la IP pública del cliente como "IP del
+request". La regla `user: any` con `ips: [127.0.0.1, redes privadas]`
+no matchea una IP pública → rechaza la lectura.
+
+**Solución**: `webrtcTrustedProxies: []`. Ver §6.2 para la explicación
+completa.
+
 ### El header `Authorization` se propaga al backend
 
-Cuando un usuario se loguea con basic auth en nginx, el navegador
-manda el header `Authorization: Basic <base64>` en **todos** los
-requests subsiguientes al mismo origin, incluyendo los que nginx
-proxea a MediaMTX. MediaMTX recibe esas credenciales (que son del
-basic auth, no de MediaMTX) e intenta validarlas contra
-`authInternalUsers`. Al no encontrar match, devuelve:
+Si alguna vez metés basic auth (o cualquier mecanismo que setee el
+header `Authorization`) en nginx, el navegador lo va a mandar en
+**todos** los requests al mismo origin, incluyendo los que nginx
+proxea a MediaMTX. MediaMTX intenta validar esas credenciales contra
+`authInternalUsers`, no encuentra match y devuelve:
 
 ```json
 {"status":"error","error":"authentication error"}
 ```
 
-**Solución**: en el `location /webrtc/` de nginx, agregar
-`proxy_set_header Authorization "";` para stripear el header antes de
-pasarlo a MediaMTX. Así MediaMTX ve un request sin auth desde
-127.0.0.1 y matchea la regla `user: any` que permite lectura desde
-IPs privadas.
+**Solución preventiva** (la dejamos aplicada aunque hoy no haya basic
+auth): en el `location /webrtc/` de nginx, `proxy_set_header
+Authorization "";` stripea el header antes de pasarlo a MediaMTX. Así
+MediaMTX ve un request sin auth desde 127.0.0.1 y matchea la regla
+`user: any` que permite lectura desde IPs privadas.
 
 ### `${VAR}` en el YAML
 

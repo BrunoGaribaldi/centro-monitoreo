@@ -8,8 +8,11 @@
 #             validar el dominio.
 #   FASE 2 -> Certbot --nginx emite el cert y AGREGA solo el bloque :443
 #             con los ssl_certificate llenos + convierte el :80 en
-#             redirect. Después editamos para sumar las locations
-#             definitivas y el basic auth.
+#             redirect.
+#
+# NOTA: por simplicidad de pruebas el dashboard queda PÚBLICO (sin basic
+# auth). Para producción hay que meter auth real (OAuth / login en la
+# app / al menos restringir por IP).
 # =====================================================================
 
 # ---------------------------------------------------------------------
@@ -20,14 +23,7 @@
 # - Containers arriba: docker compose ps  -> los dos en "Up"
 # - Paquetes:
 sudo apt update
-sudo apt install -y nginx certbot python3-certbot-nginx apache2-utils
-
-# ---------------------------------------------------------------------
-# PASO 1 — Crear el archivo de password para basic auth
-# ---------------------------------------------------------------------
-sudo htpasswd -c /etc/nginx/.htpasswd_drones operador
-# Te pide la clave dos veces. Para agregar más usuarios después,
-# corré el mismo comando SIN el flag -c (sino sobreescribe el archivo).
+sudo apt install -y nginx certbot python3-certbot-nginx
 
 # =====================================================================
 # FASE 1 — Sitio HTTP (sin SSL) para que certbot pueda validar
@@ -39,15 +35,6 @@ server {
     listen 80;
     listen [::]:80;
     server_name panel.dronefieldoperation.cloud;
-
-    # Certbot escribe sus challenges acá; ese path NO requiere auth.
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-        auth_basic off;
-    }
-
-    auth_basic           "Centro de Monitoreo";
-    auth_basic_user_file /etc/nginx/.htpasswd_drones;
 
     # 1) Dashboard estático -> container dashboard_drones
     location / {
@@ -64,12 +51,9 @@ server {
 
         proxy_pass http://127.0.0.1:8889;
 
-        # IMPORTANTE: limpiamos el header Authorization antes de mandar el
-        # request a MediaMTX. Sino, MediaMTX recibe las credenciales del
-        # basic auth de nginx (que son para "operador"), intenta validarlas
-        # contra sus authInternalUsers y devuelve 401 "authentication error".
-        # Al stripearlo, MediaMTX ve un request "sin auth" desde 127.0.0.1
-        # y aplica la regla "user: any" que permite lectura desde IPs privadas.
+        # Dejamos esta línea por defensa en profundidad: si alguna vez
+        # se vuelve a meter basic auth o algún otro mecanismo que setee
+        # Authorization, MediaMTX no se va a confundir.
         proxy_set_header Authorization     "";
 
         proxy_http_version 1.1;
@@ -103,7 +87,7 @@ sudo ufw reload
 
 # En este punto:
 #   curl -I http://panel.dronefieldoperation.cloud
-# tendría que devolver 401 (basic auth) - eso prueba que llega bien.
+# tendría que devolver 200 OK (dashboard servido directo, sin auth).
 
 # =====================================================================
 # FASE 2 — Emitir SSL con certbot
@@ -118,22 +102,6 @@ sudo certbot --nginx -d panel.dronefieldoperation.cloud
 # Después de certbot:
 sudo nginx -t
 sudo systemctl reload nginx
-
-# =====================================================================
-# PASO 3 — Verificar y ajustar el archivo resultante
-# =====================================================================
-sudo nano /etc/nginx/sites-available/drones.conf
-#
-# Confirmá que el bloque :443 tenga TODO esto:
-#   - auth_basic + auth_basic_user_file (heredados o explícitos)
-#   - location /          -> proxy_pass http://127.0.0.1:18082
-#   - location /webrtc/   -> proxy_pass http://127.0.0.1:8889 (con los headers
-#                            de WebSocket y proxy_read_timeout 86400)
-#   - location /.well-known/acme-challenge/ con "auth_basic off;"
-#     (necesario para que la renovación automática de certbot funcione)
-#
-# Si certbot duplicó bien el bloque, no hace falta editar nada. Si quedó
-# alguna location afuera del :443, copiala desde el :80 original.
 
 # =====================================================================
 # URLs finales
