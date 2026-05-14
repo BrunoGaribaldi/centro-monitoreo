@@ -253,6 +253,13 @@ Define la red bridge usada por ambos containers.
 
 ### 6.2. `mediamtx.yml`
 
+> **Notas sobre el YAML**: en este archivo usamos `true`/`false` para
+> los booleans (en vez de `yes`/`no`) y comillas explícitas en los
+> strings. MediaMTX parsea el YAML con el unmarshaler de Go, que es
+> estricto: si declara un campo como `bool` y le llega `"no"` con
+> comillas, falla con `cannot unmarshal string into Go value of type
+> bool`. El estilo `true`/`false` evita por completo esa ambigüedad.
+
 ```yaml
 logLevel: info
 logDestinations: [stdout]
@@ -261,9 +268,9 @@ Nivel de log estándar; salida por stdout para que `docker logs` la
 muestre.
 
 ```yaml
-api: no
-metrics: no
-playback: no
+api: false
+metrics: false
+playback: false
 ```
 Apagamos endpoints administrativos que no usamos. Defensa en
 profundidad: menos superficie de ataque.
@@ -272,7 +279,7 @@ profundidad: menos superficie de ataque.
 authMethod: internal
 authInternalUsers:
   - user: any
-    pass:
+    pass: ""
     ips: [127.0.0.1, ::1, 172.16.0.0/12, 192.168.0.0/16, 10.0.0.0/8]
     permissions:
       - action: read
@@ -299,23 +306,29 @@ declaramos. Cualquier otro intento (publish en `/loquesea`) es
 rechazado.
 
 ```yaml
-rtmp: yes
+rtmp: true
 rtmpAddress: :1935
+rtmpEncryption: "no"
 ```
 Activa el listener RTMP en todas las interfaces del container, puerto
-1935.
+1935. `rtmpEncryption` es un string (no un bool): valores válidos
+`"no"`, `"optional"`, `"strict"`. Dejamos `"no"` porque FlightHub 2
+publica RTMP plano.
 
 ```yaml
-webrtc: yes
+webrtc: true
 webrtcAddress: :8889
 ```
 Activa la señalización WebRTC (WHEP) en HTTP/8889.
 
 ```yaml
-webrtcAllowOrigin: "https://panel.dronefieldoperation.cloud"
+webrtcAllowOrigins: ["https://panel.dronefieldoperation.cloud"]
 ```
 CORS: solo aceptamos peticiones WHEP que vengan desde nuestro dominio.
-Evita que otra página externa embeba nuestros streams.
+Evita que otra página externa embeba nuestros streams. **Ojo**: en
+versiones de MediaMTX < 1.18 este campo se llamaba `webrtcAllowOrigin`
+(singular, string). A partir de 1.18 se llama `webrtcAllowOrigins`
+(plural, array). Si hacés downgrade, hay que volver al nombre viejo.
 
 ```yaml
 webrtcTrustedProxies: [127.0.0.1, ::1, 172.16.0.0/12]
@@ -326,11 +339,15 @@ cliente (que llega vía nginx) y no la del proxy.
 
 ```yaml
 webrtcLocalUDPAddress: :8189
+webrtcIPsFromInterfaces: true
 ```
-**La línea más importante para que WebRTC funcione**. Le dice a
-MediaMTX que use UDP/8189 como puerto fijo para todos los paquetes de
-video. Sin este setting, MediaMTX usaría un puerto UDP aleatorio cada
-vez, imposible de abrir en el firewall.
+**`webrtcLocalUDPAddress` es la línea más importante para que WebRTC
+funcione**. Le dice a MediaMTX que use UDP/8189 como puerto fijo para
+todos los paquetes de video. Sin este setting, MediaMTX usaría un
+puerto UDP aleatorio cada vez, imposible de abrir en el firewall.
+`webrtcIPsFromInterfaces: true` deja que MediaMTX descubra las IPs
+locales del container automáticamente (sumado a `webrtcAdditionalHosts`
+de abajo, son los candidatos ICE que se le ofrecen al navegador).
 
 ```yaml
 webrtcAdditionalHosts: [panel.dronefieldoperation.cloud]
@@ -343,9 +360,9 @@ hostname". El navegador resuelve el dominio a la IP pública y se
 conecta ahí.
 
 ```yaml
-hls: no
-rtsp: no
-srt: no
+hls: false
+rtsp: false
+srt: false
 ```
 Apagamos los protocolos que no usamos.
 
@@ -353,13 +370,13 @@ Apagamos los protocolos que no usamos.
 paths:
   dron1:
     source: publisher
-    record: no
+    record: false
   dron2:
     source: publisher
-    record: no
+    record: false
 ```
 Declaramos dos paths. `source: publisher` = "esperá a que alguien
-publique en esta ruta". `record: no` = no guardamos en disco.
+publique en esta ruta". `record: false` = no guardamos en disco.
 
 ### 6.3. `nginxconfig.txt` (el nginx del host)
 
@@ -528,7 +545,72 @@ Debian/Ubuntu lo traen, pero si compilaste vos, hay que recompilar.
 
 ---
 
-## 11. Lo que falta (deuda técnica conocida)
+## 11. Gotchas que ya nos pegaron (y cómo evitarlos)
+
+Cosas concretas que rompieron el deploy durante el armado inicial,
+documentadas para que no vuelvan a pasar:
+
+### Puertos de loopback ya ocupados
+
+Los rangos `127.0.0.1:8080-8082` son los primeros que la gente prueba
+y suelen estar tomados por otros servicios (paneles admin, Tomcat,
+viejos containers olvidados). Por eso usamos `18082` para el dashboard
+interno. Si pifia el puerto, el síntoma típico es:
+
+```
+Error response from daemon: failed to bind host port for
+127.0.0.1:XXXX: address already in use
+```
+
+Para diagnosticar: `sudo ss -tlnp | grep :XXXX`. Si aparece
+`docker-proxy`, suele ser un fantasma de un `docker compose up`
+anterior que falló a mitad — se limpia con `docker compose down` o
+`sudo systemctl restart docker` si están realmente trabados.
+
+### YAML 1.1 vs unmarshaler estricto de Go
+
+MediaMTX (escrito en Go) parsea su YAML con tipos estrictos. Los
+gotchas:
+
+- **`yes`/`no` sin comillas son booleans** (true/false) en YAML 1.1.
+  Si un campo declara tipo `string` (como `rtmpEncryption`), hay que
+  ponerlo entre comillas: `rtmpEncryption: "no"`. Si declara `bool`
+  (como `record`), va sin comillas: `record: false`.
+- **Mezclar las dos cosas explota**. Síntoma: `ERR: json: cannot
+  unmarshal string into Go value of type bool` en loop infinito.
+- **Solución preventiva**: usar `true`/`false` para todos los booleans
+  (no `yes`/`no`), y comillas siempre en strings. Más verboso pero
+  inequívoco.
+
+### Campos renombrados / removidos entre versiones de MediaMTX
+
+MediaMTX cambia nombres de campos entre versiones con relativa
+frecuencia. Concretamente nos pasó con:
+
+- **`webrtcEncryption`**: existió en versiones viejas, ahora **no
+  existe** (WebRTC siempre va cifrado por diseño con DTLS-SRTP). Si
+  está en el YAML, en algunas versiones lo ignora con un warning, en
+  otras crashea el unmarshal.
+- **`webrtcAllowOrigin` → `webrtcAllowOrigins`** (singular string →
+  plural array) a partir de v1.18. El campo viejo sigue funcionando
+  con un warning de deprecación.
+
+**Solución preventiva**: pinear la versión de MediaMTX a un tag
+específico (p.ej. `bluenviron/mediamtx:1.18.1` en el
+`docker-compose.yml`) en vez de `latest`, para que un upgrade no
+sorpresivo no rompa la config un día random.
+
+### `${VAR}` en el YAML
+
+MediaMTX expande variables de entorno escritas como `${VAR}` dentro
+del YAML, pero **solo si la variable existe en el env del proceso**.
+Si te olvidás el `.env` o la `MEDIAMTX_PUBLISH_PASS` está vacía,
+literalmente el string `${MEDIAMTX_PUBLISH_PASS}` queda como
+contraseña, y el publish va a parecer "que funciona" pero con auth
+rota. Confirmá con `docker compose config` que la variable se expande
+antes de levantar.
+
+## 12. Lo que falta (deuda técnica conocida)
 
 - **Auth real**: el basic auth alcanza para pruebas. Para producción
   conviene un OAuth (Auth0, Keycloak) o al menos un login en la app.
@@ -544,7 +626,7 @@ Debian/Ubuntu lo traen, pero si compilaste vos, hay que recompilar.
 
 ---
 
-## 12. Mapa de puertos (resumen)
+## 13. Mapa de puertos (resumen)
 
 | Puerto       | Proto | Acceso   | Quién lo usa                       |
 | ------------ | ----- | -------- | ---------------------------------- |

@@ -48,7 +48,7 @@ rtmpEncryption: "no"
 # =====================================================================
 webrtc: true
 webrtcAddress: :8889
-webrtcAllowOrigin: "https://panel.dronefieldoperation.cloud"
+webrtcAllowOrigins: ["https://panel.dronefieldoperation.cloud"]
 webrtcTrustedProxies: [127.0.0.1, ::1, 172.16.0.0/12]
 webrtcLocalUDPAddress: :8189
 webrtcIPsFromInterfaces: true
