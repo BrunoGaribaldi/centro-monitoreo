@@ -79,7 +79,8 @@ server {
 
 # Activar el sitio y probar
 sudo ln -s /etc/nginx/sites-available/drones.conf /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default     # opcional: sacar el default
+# OJO: NO borres /etc/nginx/sites-enabled/default si el server ya hospeda
+# otros sitios -- puede tener configuración compartida importante.
 sudo nginx -t
 sudo systemctl reload nginx
 
