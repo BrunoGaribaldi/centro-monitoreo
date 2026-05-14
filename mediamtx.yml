@@ -21,14 +21,22 @@ playback: false
 # =====================================================================
 authMethod: internal
 authInternalUsers:
+  # Regla 1: lectura libre desde redes privadas (el nginx-host llega por
+  # 127.0.0.1, así que entra sin auth).
   - user: any
     pass: ""
     ips: [127.0.0.1, ::1, 172.16.0.0/12, 192.168.0.0/16, 10.0.0.0/8]
     permissions:
       - action: read
       - action: playback
-  - user: publisher
-    pass: ${MEDIAMTX_PUBLISH_PASS}
+  # Regla 2: PUBLICACIÓN SIN AUTH en dron1/dron2.
+  # FlightHub 2 NO soporta el formato rtmp://user:pass@host/path: aunque
+  # le pongas credenciales en la URL, no las manda. Por eso dejamos
+  # publish abierto en los paths conocidos.
+  # MITIGACIÓN PENDIENTE: restringir por IP origen con whitelist de los
+  # rangos DJI (ver §12 deuda técnica del Readme).
+  - user: any
+    pass: ""
     ips: []
     permissions:
       - action: publish

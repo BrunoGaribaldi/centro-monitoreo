@@ -51,9 +51,15 @@ server {
 
         proxy_pass http://127.0.0.1:8889;
 
-        # Dejamos esta línea por defensa en profundidad: si alguna vez
-        # se vuelve a meter basic auth o algún otro mecanismo que setee
-        # Authorization, MediaMTX no se va a confundir.
+        # IMPORTANTE: MediaMTX devuelve un header Location: /dronN/whep/<id>
+        # tras el POST inicial de WHEP. Como su path interno no tiene el
+        # prefijo /webrtc/, el browser sigue a /dronN/whep/<id> (sin
+        # prefijo) y los PATCH de trickle ICE caen en location / -> 405.
+        # Esta línea reescribe el Location para que vuelva /webrtc/ adelante.
+        proxy_redirect ~^/(.*)$ /webrtc/$1;
+
+        # Defensa: si alguna vez se mete basic auth en nginx, no propagamos
+        # las credenciales a MediaMTX (le confundirían el authMethod).
         proxy_set_header Authorization     "";
 
         proxy_http_version 1.1;

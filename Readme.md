@@ -602,6 +602,39 @@ específico (p.ej. `bluenviron/mediamtx:1.18.1` en el
 `docker-compose.yml`) en vez de `latest`, para que un upgrade no
 sorpresivo no rompa la config un día random.
 
+### El `Location` de WHEP no incluye el prefijo del proxy
+
+Síntoma: el video carga un instante y después tira `Error: bad status
+code 405, retrying in some seconds`. En DevTools se ve un PATCH a
+`https://panel.dronefieldoperation.cloud/dron1/whep/<id>` (**sin** el
+prefijo `/webrtc/`) que devuelve 405.
+
+Causa: el flujo WHEP es POST → 201 con `Location:` → PATCH a esa
+Location para mandar candidatos ICE. MediaMTX genera el `Location`
+con SU path interno (`/dron1/whep/<id>`), ignorando que está detrás
+de un proxy con prefijo. El browser sigue ese Location absoluto al
+dominio, pega a `/dron1/whep/...` (que no matchea `location /webrtc/`),
+cae en `location /` del dashboard, y devuelve 405. Sin trickle ICE,
+la sesión nunca completa y termina en `deadline exceeded`.
+
+**Solución**: en el `location /webrtc/` de nginx,
+`proxy_redirect ~^/(.*)$ /webrtc/$1;` reescribe el Location agregando
+el prefijo de vuelta.
+
+### FlightHub 2 no manda credenciales RTMP en formato `user:pass@`
+
+Síntoma: en logs de MediaMTX, `[RTMP] [conn ...] closed: authentication
+failed`, aunque la URL del canal de reenvío en FlightHub 2 está
+escrita correctamente como `rtmp://publisher:admin@host:1935/dron1`.
+
+Causa: DJI FlightHub 2 ignora las credenciales embebidas en la URL.
+El RTMP llega al server, pero anónimo.
+
+**Solución de prueba**: dejar publish sin auth en MediaMTX, restringido
+a los paths conocidos (`dron1`, `dron2`). Para producción, agregar
+whitelist por IP de origen (rangos DJI vistos en logs: `121.30.0.0/16`,
+`183.201.0.0/16` aproximadamente).
+
 ### MediaMTX rechazando reads desde el navegador con "authentication failed"
 
 Síntoma: los iframes muestran `{"status":"error","error":"authentication error"}`
@@ -650,8 +683,19 @@ antes de levantar.
 
 ## 12. Lo que falta (deuda técnica conocida)
 
+- **Auth de publish abierta**: hoy cualquiera que sepa el dominio
+  puede publicar a `dron1`/`dron2`. Mitigación inmediata: whitelist por
+  IP origen en `authInternalUsers` con los rangos DJI. Para producción
+  conviene un mecanismo más sólido (token rotativo, mTLS).
+
 - **Auth real**: el basic auth alcanza para pruebas. Para producción
   conviene un OAuth (Auth0, Keycloak) o al menos un login en la app.
+- **Auth de viewers**: el dashboard está público (cualquiera con el
+  dominio entra). Para producción, basic auth, OAuth, o login en la app.
+- **Audio**: MediaMTX descarta la pista de audio del dron porque viene
+  en MPEG-4 AAC y WebRTC no lo soporta directamente. Si en algún
+  momento se necesita audio, configurar un transcoder (ffmpeg externo o
+  un path con `runOnDemand`).
 - **Multi-tenant**: hoy todo el mundo ve todos los drones. No hay
   concepto de "esta empresa solo ve sus equipos".
 - **Monitoreo de salud**: no detectamos automáticamente cuando un
