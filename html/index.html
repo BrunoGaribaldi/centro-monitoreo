@@ -2,40 +2,472 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Centro de Monitoreo - Drones</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Centro de Monitoreo - NQN Petrol</title>
     <style>
-        body { background-color: #1e1e1e; color: white; font-family: Arial, sans-serif; margin: 0; display: flex; }
-        .sidebar { width: 250px; background: #2d2d2d; height: 100vh; padding: 20px; box-sizing: border-box; }
-        .grid { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 100vh; gap: 5px; background: #000; padding: 5px; }
-        .camara { background: #333; position: relative; border: 1px solid #444; }
-        iframe { width: 100%; height: 100%; border: none; }
-        .titulo-cam { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; z-index: 10; font-size: 14px; }
+        :root {
+            --bg-main:     #121212;
+            --bg-sidebar:  #1f1f1f;
+            --bg-card:     #1a1a1a;
+            --bg-card-hover: #252525;
+            --border:      #2f2f2f;
+            --text:        #e8e8e8;
+            --text-muted:  #888;
+            --accent:      #1e88e5;
+            --error:       #e57373;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: var(--bg-main);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--bg-sidebar);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .logo {
+            width: 100%;
+            max-height: 60px;
+            object-fit: contain;
+            object-position: left center;
+        }
+
+        .sidebar h2 {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+        }
+
+        .selector {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .selector label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+            user-select: none;
+            font-size: 14px;
+        }
+        .selector label:hover { background: var(--bg-card-hover); }
+        .selector input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+        .actions button {
+            flex: 1;
+            padding: 7px 10px;
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .actions button:hover { background: var(--bg-card-hover); }
+
+        .footer-info {
+            margin-top: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+
+        /* ===== Grid ===== */
+        .grid {
+            flex: 1;
+            display: grid;
+            gap: 6px;
+            padding: 6px;
+            background: #000;
+            overflow: hidden;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            grid-auto-rows: 1fr;
+        }
+        .grid.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 15px;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .camara {
+            background: #0a0a0a;
+            position: relative;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .camara video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: #000;
+        }
+
+        .titulo-cam {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 10;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .estado {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        .estado.error { color: var(--error); }
+        .estado.hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="grid">
-        <!-- Celda 1: Cargamos el reproductor nativo de MediaMTX mediante el proxy de Nginx -->
-        <div class="camara">
-            <div class="titulo-cam">CAm-Dock1</div>
-            <!-- La ruta /webrtc/ será procesada por Nginx -->
-            <iframe src="/webrtc/dock-cam-dock-1/" allow="autoplay; fullscreen"></iframe>
-        </div>
-        
-        <div class="camara">
-            <div class="titulo-cam">CAm-Q1-Angular</div>
-            <iframe src="/webrtc/dron-cam-q1-angular/" allow="autoplay; fullscreen"></iframe>
-        </div>
-        <div class="camara">
-            <div class="titulo-cam">CAm-Q1-Infrarojo</div>
-            <iframe src="/webrtc/dron-cam-q1-infrarojo/" allow="autoplay; fullscreen"></iframe>
-        </div>
-        <div class="camara">
-            <div class="titulo-cam">CAm-Q1-Zoom</div>
-            <iframe src="/webrtc/dron-cam-q1-zoom/" allow="autoplay; fullscreen"></iframe>
+    <aside class="sidebar">
+        <img src="images.png" alt="NQN Petrol" class="logo">
+
+        <h2>Cámaras</h2>
+        <div class="selector" id="selector"></div>
+
+        <div class="actions">
+            <button id="btn-todas">Todas</button>
+            <button id="btn-ninguna">Ninguna</button>
         </div>
 
-    </div>
+        <div class="footer-info">
+            <strong>Centro de Monitoreo</strong><br>
+            Streaming WebRTC en vivo
+        </div>
+    </aside>
 
+    <main class="grid" id="grid"></main>
+
+    <script>
+        // ==================================================================
+        // Configuración de cámaras
+        // ==================================================================
+        // Para agregar/sacar cámaras: editá este array. El path debe
+        // coincidir con lo declarado en mediamtx.yml y con la URL que
+        // usa el publisher en FlightHub.
+        const CAMARAS = [
+            { path: "dock-cam-dock-1",       titulo: "Dock 1" },
+            { path: "dron-cam-q1-angular",   titulo: "Q1 - Angular" },
+            { path: "dron-cam-q1-infrarojo", titulo: "Q1 - Infrarojo" },
+            { path: "dron-cam-q1-zoom",      titulo: "Q1 - Zoom" },
+        ];
+
+        const STORAGE_KEY = "centro-monitoreo:visibles";
+        const RETRY_MS = 4000;          // tiempo entre reintentos si una conexión falla
+        const ICE_TIMEOUT_MS = 4000;    // tope para gathering de candidatos ICE
+
+        // ==================================================================
+        // Estado
+        // ==================================================================
+        // path -> { pc: RTCPeerConnection|null, retryTimer: number|null }
+        const conexiones = new Map();
+        const visibles   = new Set(cargarVisibles());
+
+        function cargarVisibles() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) return arr;
+                }
+            } catch (_) { /* fallback */ }
+            return CAMARAS.map(c => c.path);
+        }
+
+        function guardarVisibles() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([...visibles]));
+            } catch (_) { /* localStorage podría estar deshabilitado */ }
+        }
+
+        // ==================================================================
+        // Sidebar
+        // ==================================================================
+        function renderSidebar() {
+            const cont = document.getElementById("selector");
+            cont.innerHTML = "";
+            for (const cam of CAMARAS) {
+                const label = document.createElement("label");
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.checked = visibles.has(cam.path);
+                input.addEventListener("change", () => {
+                    if (input.checked) visibles.add(cam.path);
+                    else                visibles.delete(cam.path);
+                    guardarVisibles();
+                    renderGrid();
+                });
+                const span = document.createElement("span");
+                span.textContent = cam.titulo;
+                label.appendChild(input);
+                label.appendChild(span);
+                cont.appendChild(label);
+            }
+        }
+
+        document.getElementById("btn-todas").addEventListener("click", () => {
+            CAMARAS.forEach(c => visibles.add(c.path));
+            guardarVisibles();
+            renderSidebar();
+            renderGrid();
+        });
+        document.getElementById("btn-ninguna").addEventListener("click", () => {
+            visibles.clear();
+            guardarVisibles();
+            renderSidebar();
+            renderGrid();
+        });
+
+        // ==================================================================
+        // Grid
+        // ==================================================================
+        function renderGrid() {
+            const grid = document.getElementById("grid");
+
+            // Sin nada seleccionado -> mensaje vacío
+            if (visibles.size === 0) {
+                cerrarTodo();
+                grid.classList.add("empty");
+                grid.innerHTML = "<div>Marcá una cámara en la barra lateral para verla.</div>";
+                return;
+            }
+            grid.classList.remove("empty");
+
+            // 1) Sacar las celdas que dejaron de estar visibles
+            for (const celda of [...grid.querySelectorAll(".camara")]) {
+                const path = celda.dataset.path;
+                if (!visibles.has(path)) {
+                    desconectar(path);
+                    celda.remove();
+                }
+            }
+
+            // 2) Agregar las nuevas, manteniendo el orden de CAMARAS
+            for (const cam of CAMARAS) {
+                if (!visibles.has(cam.path)) continue;
+
+                let celda = grid.querySelector(`[data-path="${cam.path}"]`);
+                if (!celda) {
+                    celda = crearCelda(cam);
+                    grid.appendChild(celda);
+                    conectar(cam.path, celda);
+                }
+            }
+
+            // 3) Reordenar para que sigan el orden de CAMARAS
+            for (const cam of CAMARAS) {
+                const celda = grid.querySelector(`[data-path="${cam.path}"]`);
+                if (celda) grid.appendChild(celda);
+            }
+        }
+
+        function crearCelda(cam) {
+            const celda = document.createElement("div");
+            celda.className = "camara";
+            celda.dataset.path = cam.path;
+            celda.innerHTML = `
+                <div class="titulo-cam"></div>
+                <video autoplay muted playsinline></video>
+                <div class="estado">Conectando...</div>
+            `;
+            celda.querySelector(".titulo-cam").textContent = cam.titulo;
+            return celda;
+        }
+
+        // ==================================================================
+        // Cliente WHEP (non-trickle)
+        // ==================================================================
+        async function conectar(path, celda) {
+            // Cancelar reintentos pendientes para este path
+            const prev = conexiones.get(path);
+            if (prev?.retryTimer) clearTimeout(prev.retryTimer);
+
+            const videoEl  = celda.querySelector("video");
+            const estadoEl = celda.querySelector(".estado");
+            estadoEl.classList.remove("error", "hidden");
+            estadoEl.textContent = "Conectando…";
+
+            let pc = null;
+            try {
+                pc = new RTCPeerConnection();
+                pc.addTransceiver("video", { direction: "recvonly" });
+
+                pc.ontrack = (ev) => {
+                    const [stream] = ev.streams;
+                    if (videoEl.srcObject !== stream) {
+                        videoEl.srcObject = stream;
+                    }
+                    estadoEl.classList.add("hidden");
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    const s = pc.iceConnectionState;
+                    if (s === "failed" || s === "disconnected" || s === "closed") {
+                        if (visibles.has(path)) {
+                            programarReintento(path, celda, "Conexión perdida");
+                        }
+                    }
+                };
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await esperarIceComplete(pc);
+
+                const resp = await fetch(`/webrtc/${path}/whep`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/sdp" },
+                    body: pc.localDescription.sdp,
+                });
+
+                if (!resp.ok) {
+                    const body = await resp.text().catch(() => "");
+                    throw new Error(`HTTP ${resp.status}${body ? " - " + body.slice(0, 80) : ""}`);
+                }
+
+                const answerSdp = await resp.text();
+                await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+
+                conexiones.set(path, { pc, retryTimer: null });
+            } catch (err) {
+                if (pc) try { pc.close(); } catch (_) {}
+                console.warn(`[${path}]`, err.message || err);
+                programarReintento(path, celda, "Sin señal");
+            }
+        }
+
+        function programarReintento(path, celda, mensaje) {
+            // Limpiar PC actual
+            const prev = conexiones.get(path);
+            if (prev?.pc) {
+                try { prev.pc.close(); } catch (_) {}
+            }
+            if (prev?.retryTimer) clearTimeout(prev.retryTimer);
+
+            const estadoEl = celda.querySelector(".estado");
+            const videoEl  = celda.querySelector("video");
+            estadoEl.textContent = `${mensaje} · reintentando…`;
+            estadoEl.classList.add("error");
+            estadoEl.classList.remove("hidden");
+            videoEl.srcObject = null;
+
+            const t = setTimeout(() => {
+                if (visibles.has(path)) {
+                    conectar(path, celda);
+                }
+            }, RETRY_MS);
+
+            conexiones.set(path, { pc: null, retryTimer: t });
+        }
+
+        function desconectar(path) {
+            const conn = conexiones.get(path);
+            if (!conn) return;
+            if (conn.pc) {
+                try { conn.pc.close(); } catch (_) {}
+            }
+            if (conn.retryTimer) clearTimeout(conn.retryTimer);
+            conexiones.delete(path);
+        }
+
+        function cerrarTodo() {
+            for (const path of [...conexiones.keys()]) desconectar(path);
+        }
+
+        function esperarIceComplete(pc) {
+            return new Promise(resolve => {
+                if (pc.iceGatheringState === "complete") return resolve();
+                const onChange = () => {
+                    if (pc.iceGatheringState === "complete") {
+                        pc.removeEventListener("icegatheringstatechange", onChange);
+                        resolve();
+                    }
+                };
+                pc.addEventListener("icegatheringstatechange", onChange);
+                // Fallback: si nunca llega a "complete" igual mandamos el offer
+                setTimeout(() => {
+                    pc.removeEventListener("icegatheringstatechange", onChange);
+                    resolve();
+                }, ICE_TIMEOUT_MS);
+            });
+        }
+
+        // ==================================================================
+        // Boot
+        // ==================================================================
+        renderSidebar();
+        renderGrid();
+
+        window.addEventListener("beforeunload", cerrarTodo);
+    </script>
 </body>
 </html>
