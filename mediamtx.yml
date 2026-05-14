@@ -1,29 +1,28 @@
 # =====================================================================
 # MediaMTX config para Centro de Monitoreo de Drones
-# Documentación completa: https://github.com/bluenviron/mediamtx
+# Documentación: https://github.com/bluenviron/mediamtx
+#
+# NOTA SOBRE YAML: usamos true/false explícitos en booleans (no yes/no)
+# y comillas en los strings, para evitar ambigüedades del estándar
+# YAML 1.1 que MediaMTX no tolera bien.
 # =====================================================================
 
 # --- Logs ---
 logLevel: info
 logDestinations: [stdout]
 
-# --- API / Metrics (deshabilitados, no los exponemos) ---
-api: no
-metrics: no
-playback: no
+# --- Endpoints administrativos (apagados) ---
+api: false
+metrics: false
+playback: false
 
 # =====================================================================
 # Autenticación
 # =====================================================================
-# - "publisher" puede publicar RTMP en los paths dron1/dron2 (FlightHub 2)
-# - Lectura libre desde redes privadas (loopback del host + red docker
-#   interna). El nginx-host es el único que llega como lector y ya está
-#   protegido por basic auth + HTTPS arriba.
-# Las contraseñas se inyectan por env desde el .env (ver docker-compose).
 authMethod: internal
 authInternalUsers:
   - user: any
-    pass:
+    pass: ""
     ips: [127.0.0.1, ::1, 172.16.0.0/12, 192.168.0.0/16, 10.0.0.0/8]
     permissions:
       - action: read
@@ -40,43 +39,33 @@ authInternalUsers:
 # =====================================================================
 # RTMP (ingesta desde FlightHub 2)
 # =====================================================================
-rtmp: yes
+rtmp: true
 rtmpAddress: :1935
 rtmpEncryption: "no"
 
 # =====================================================================
 # WebRTC (salida hacia el navegador)
 # =====================================================================
-# - webrtcAddress: puerto HTTP de señalización (WHEP). Lo proxea nginx.
-# - webrtcLocalUDPAddress: puerto UDP para los candidatos ICE. Debe estar
-#   abierto en el firewall del servidor (8189/udp).
-# - webrtcAdditionalHosts: hostname público a anunciar en los candidatos
-#   ICE (sino el cliente recibiría la IP interna del container).
-# - webrtcAllowOrigin: restringido al dominio del dashboard.
-webrtc: yes
+webrtc: true
 webrtcAddress: :8889
-webrtcEncryption: "no"
 webrtcAllowOrigin: "https://panel.dronefieldoperation.cloud"
 webrtcTrustedProxies: [127.0.0.1, ::1, 172.16.0.0/12]
 webrtcLocalUDPAddress: :8189
-webrtcLocalTCPAddress: ""
-webrtcIPsFromInterfaces: yes
+webrtcIPsFromInterfaces: true
 webrtcAdditionalHosts: [panel.dronefieldoperation.cloud]
-webrtcICEServers2: []
 
-# --- Apagamos protocolos que no usamos ---
-hls: no
-rtsp: no
-srt: no
+# --- Protocolos no usados ---
+hls: false
+rtsp: false
+srt: false
 
 # =====================================================================
 # Paths (un path por dron)
 # =====================================================================
-# record: no  → no guardamos vuelos en disco.
 paths:
   dron1:
     source: publisher
-    record: no
+    record: false
   dron2:
     source: publisher
-    record: no
+    record: false
