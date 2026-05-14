@@ -600,6 +600,25 @@ específico (p.ej. `bluenviron/mediamtx:1.18.1` en el
 `docker-compose.yml`) en vez de `latest`, para que un upgrade no
 sorpresivo no rompa la config un día random.
 
+### El header `Authorization` se propaga al backend
+
+Cuando un usuario se loguea con basic auth en nginx, el navegador
+manda el header `Authorization: Basic <base64>` en **todos** los
+requests subsiguientes al mismo origin, incluyendo los que nginx
+proxea a MediaMTX. MediaMTX recibe esas credenciales (que son del
+basic auth, no de MediaMTX) e intenta validarlas contra
+`authInternalUsers`. Al no encontrar match, devuelve:
+
+```json
+{"status":"error","error":"authentication error"}
+```
+
+**Solución**: en el `location /webrtc/` de nginx, agregar
+`proxy_set_header Authorization "";` para stripear el header antes de
+pasarlo a MediaMTX. Así MediaMTX ve un request sin auth desde
+127.0.0.1 y matchea la regla `user: any` que permite lectura desde
+IPs privadas.
+
 ### `${VAR}` en el YAML
 
 MediaMTX expande variables de entorno escritas como `${VAR}` dentro

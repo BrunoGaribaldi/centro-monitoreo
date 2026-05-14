@@ -64,6 +64,14 @@ server {
 
         proxy_pass http://127.0.0.1:8889;
 
+        # IMPORTANTE: limpiamos el header Authorization antes de mandar el
+        # request a MediaMTX. Sino, MediaMTX recibe las credenciales del
+        # basic auth de nginx (que son para "operador"), intenta validarlas
+        # contra sus authInternalUsers y devuelve 401 "authentication error".
+        # Al stripearlo, MediaMTX ve un request "sin auth" desde 127.0.0.1
+        # y aplica la regla "user: any" que permite lectura desde IPs privadas.
+        proxy_set_header Authorization     "";
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade           $http_upgrade;
         proxy_set_header Connection        "upgrade";
