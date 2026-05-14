@@ -238,12 +238,11 @@ archivos a servir.
 
 ```yaml
     ports:
-      - "127.0.0.1:8082:80/tcp"
+      - "127.0.0.1:18082:80/tcp"
 ```
 Solo accesible desde localhost. El que lo expone al mundo (con TLS y
-auth) es el nginx del host. Usamos 8082 porque 8080 y 8081 suelen
-estar ocupados por otros servicios comunes (Tomcat, paneles admin,
-etc.).
+auth) es el nginx del host. Usamos 18082 (puerto alto, fuera del
+rango habitual) para evitar choques con otros servicios del servidor.
 
 ```yaml
 networks:
@@ -553,5 +552,5 @@ Debian/Ubuntu lo traen, pero si compilaste vos, hay que recompilar.
 | 443          | TCP   | público  | HTTPS del dashboard                |
 | 1935         | TCP   | público  | RTMP ingesta de FlightHub 2        |
 | 8189         | UDP   | público  | WebRTC ICE (paquetes de video)     |
-| 8082         | TCP   | loopback | Container dashboard → nginx host   |
+| 18082        | TCP   | loopback | Container dashboard → nginx host   |
 | 8889         | TCP   | loopback | Container MediaMTX → nginx host    |
