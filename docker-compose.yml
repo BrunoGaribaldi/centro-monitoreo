@@ -33,6 +33,21 @@ services:
     networks:
       - monitoring_net
 
+  # 3. Servicio de autenticación (JWT + multi-tenancy)
+  auth_service:
+    build: ./auth-service
+    container_name: auth_service
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
+    volumes:
+      - ./companies.yml:/app/companies.yml:ro
+    ports:
+      # Solo loopback: el nginx del host lo proxea en /center-auth/
+      - "127.0.0.1:19100:19100/tcp"
+    networks:
+      - monitoring_net
+
 networks:
   monitoring_net:
     driver: bridge

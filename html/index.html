@@ -57,6 +57,100 @@
             flex-direction: column;
         }
 
+        /* ===== Login overlay ===== */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--color-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .login-overlay.hidden { display: none; }
+
+        .login-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: var(--shadow-lg);
+        }
+        .login-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .login-logo img {
+            height: 32px;
+            object-fit: contain;
+        }
+        .login-logo-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text);
+            line-height: 1.2;
+        }
+        .login-logo-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-top: 2px;
+        }
+        .login-field {
+            margin-bottom: 16px;
+        }
+        .login-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .login-field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--color-text);
+            background: var(--color-surface);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .login-field input:focus { border-color: var(--color-primary); }
+        .login-btn {
+            width: 100%;
+            padding: 11px;
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 4px;
+        }
+        .login-btn:hover    { background: var(--color-primary-hover); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .login-error {
+            margin-top: 12px;
+            color: var(--color-error);
+            font-size: 13px;
+            text-align: center;
+            min-height: 20px;
+        }
+
         /* ===== Topbar ===== */
         .topbar {
             height: var(--topbar-h);
@@ -184,6 +278,10 @@
             border-color: var(--color-primary);
             color: var(--color-primary);
             background: var(--color-surface-alt);
+        }
+        .logout-btn:hover {
+            border-color: var(--color-error) !important;
+            color: var(--color-error) !important;
         }
 
         /* ===== Grid ===== */
@@ -316,10 +414,34 @@
             .actions { padding-left: 0; border-left: none; }
             .grid { padding: 8px; gap: 8px; }
             .titulo-cam { font-size: 11px; padding: 4px 8px; }
+            .login-card { padding: 28px 20px; }
         }
     </style>
 </head>
 <body>
+
+    <!-- Login overlay — visible hasta que el usuario se autentique -->
+    <div class="login-overlay" id="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="images.png" alt="NQN Petrol">
+                <div>
+                    <div class="login-logo-title">Centro de Monitoreo</div>
+                    <div class="login-logo-sub">Streaming en vivo</div>
+                </div>
+            </div>
+            <div class="login-field">
+                <label>Usuario</label>
+                <input type="text" id="login-username" autocomplete="username" placeholder="usuario">
+            </div>
+            <div class="login-field">
+                <label>Contraseña</label>
+                <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
+            </div>
+            <button class="login-btn" id="login-btn">Ingresar</button>
+            <div class="login-error" id="login-error"></div>
+        </div>
+    </div>
 
     <header class="topbar">
         <div class="brand">
@@ -336,6 +458,7 @@
         <div class="actions">
             <button id="btn-todas" title="Mostrar todas las cámaras">Todas</button>
             <button id="btn-ninguna" title="Ocultar todas">Ninguna</button>
+            <button class="logout-btn" id="btn-logout" title="Cerrar sesión">Salir</button>
         </div>
     </header>
 
@@ -343,21 +466,127 @@
 
     <script>
         // ==================================================================
-        // Configuración de cámaras
+        // Autenticación
         // ==================================================================
-        // Para agregar/sacar cámaras: editá este array. El `path` debe
-        // coincidir con lo declarado en mediamtx.yml y con la URL que
-        // usa el publisher en FlightHub.
-        const CAMARAS = [
-            { path: "dock-cam-dock-1",       titulo: "Dock 1" },
-            { path: "dron-cam-q1-angular",   titulo: "Q1 · Angular" },
-            { path: "dron-cam-q1-infrarojo", titulo: "Q1 · Infrarojo" },
-            { path: "dron-cam-q1-zoom",      titulo: "Q1 · Zoom" },
-        ];
+        const AUTH_KEY    = "centro-monitoreo:token";
+        const API_LOGIN   = "/center-auth/login";
+        const API_CAMERAS = "/center-auth/cameras";
 
-        const STORAGE_KEY = "centro-monitoreo:visibles";
-        const RETRY_MS = 4000;
+        function getToken()   { try { return localStorage.getItem(AUTH_KEY); } catch { return null; } }
+        function saveToken(t) { try { localStorage.setItem(AUTH_KEY, t); }    catch {} }
+        function clearToken() { try { localStorage.removeItem(AUTH_KEY); }    catch {} }
+
+        function tokenExpired(token) {
+            try {
+                const b64     = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+                const payload = JSON.parse(atob(b64));
+                return Date.now() / 1000 >= payload.exp;
+            } catch { return true; }
+        }
+
+        function mostrarLogin(msg) {
+            cerrarTodo();
+            document.getElementById("login-overlay").classList.remove("hidden");
+            document.getElementById("login-error").textContent = msg || "";
+            setTimeout(() => document.getElementById("login-username").focus(), 50);
+        }
+        function ocultarLogin() {
+            document.getElementById("login-overlay").classList.add("hidden");
+            document.getElementById("login-error").textContent = "";
+        }
+
+        // ==================================================================
+        // Configuración de cámaras (dinámica — cargada desde /center-auth/cameras)
+        // ==================================================================
+        // Para agregar/sacar cámaras: editá companies.yml en el servidor.
+        const CAMARAS = [];   // se llena en configurarCamaras() tras el login
+
+        const STORAGE_KEY  = "centro-monitoreo:visibles";
+        const RETRY_MS     = 4000;
         const ICE_TIMEOUT_MS = 4000;
+
+        function configurarCamaras(sites) {
+            CAMARAS.length = 0;
+            for (const site of sites) {
+                for (const cam of site.cameras) {
+                    CAMARAS.push({
+                        path:        cam.path,
+                        titulo:      cam.titulo || cam.path,
+                        site:        site.site,
+                        siteDisplay: site.display,
+                    });
+                }
+            }
+            // Restaurar selección previa del localStorage, filtrada por cámaras disponibles
+            visibles.clear();
+            try {
+                const arr = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+                arr.filter(p => CAMARAS.some(c => c.path === p)).forEach(p => visibles.add(p));
+            } catch {}
+            if (visibles.size === 0) CAMARAS.forEach(c => visibles.add(c.path));
+        }
+
+        async function iniciarApp() {
+            const token = getToken();
+            if (!token || tokenExpired(token)) { mostrarLogin(); return; }
+            try {
+                const r = await fetch(API_CAMERAS, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!r.ok) { clearToken(); mostrarLogin("Sesión expirada. Ingresá de nuevo."); return; }
+                const { sites } = await r.json();
+                configurarCamaras(sites);
+                ocultarLogin();
+                renderSelector();
+                renderGrid();
+            } catch { mostrarLogin("Error de red. Intentá de nuevo."); }
+        }
+
+        // ==================================================================
+        // Login form
+        // ==================================================================
+        document.getElementById("login-btn").addEventListener("click", async () => {
+            const username = document.getElementById("login-username").value.trim();
+            const password = document.getElementById("login-password").value;
+            const errEl    = document.getElementById("login-error");
+            const btn      = document.getElementById("login-btn");
+
+            if (!username || !password) { errEl.textContent = "Ingresá usuario y contraseña."; return; }
+            btn.disabled = true;
+            errEl.textContent = "";
+            try {
+                const r = await fetch(API_LOGIN, {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ username, password }),
+                });
+                if (!r.ok) {
+                    errEl.textContent = (await r.json().catch(() => ({}))).detail || "Credenciales incorrectas.";
+                    return;
+                }
+                const data = await r.json();
+                saveToken(data.token);
+                configurarCamaras(data.sites);
+                ocultarLogin();
+                renderSelector();
+                renderGrid();
+            } catch { errEl.textContent = "Error de red. Intentá de nuevo."; }
+            finally   { btn.disabled = false; }
+        });
+
+        document.getElementById("login-password").addEventListener("keydown", e => {
+            if (e.key === "Enter") document.getElementById("login-btn").click();
+        });
+
+        document.getElementById("btn-logout").addEventListener("click", () => {
+            clearToken();
+            cerrarTodo();
+            CAMARAS.length = 0;
+            visibles.clear();
+            document.getElementById("grid").innerHTML = "";
+            document.getElementById("selector").innerHTML = "";
+            mostrarLogin();
+        });
 
         // ==================================================================
         // Compatibilidad
@@ -375,30 +604,11 @@
         // Estado
         // ==================================================================
         // path -> { pc, retryTimer, generation }
-        // "generation" es un contador que se incrementa cada vez que se
-        // reconecta el path. Permite descartar respuestas tardías de un
-        // intento previo cuando el usuario hace toggle on/off rápido.
         const conexiones = new Map();
-        const visibles   = new Set(cargarVisibles());
-
-        function cargarVisibles() {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                if (raw) {
-                    const arr = JSON.parse(raw);
-                    if (Array.isArray(arr)) {
-                        // Filtrar por las que existen actualmente
-                        return arr.filter(p => CAMARAS.some(c => c.path === p));
-                    }
-                }
-            } catch (_) { /* fallback */ }
-            return CAMARAS.map(c => c.path);
-        }
+        const visibles   = new Set();
 
         function guardarVisibles() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify([...visibles]));
-            } catch (_) { /* localStorage podría estar deshabilitado */ }
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...visibles])); } catch {}
         }
 
         // ==================================================================
@@ -442,8 +652,6 @@
         // ==================================================================
         // Grid layout
         // ==================================================================
-        // Decide cuántas columnas usar para N cámaras visibles, priorizando
-        // que cada celda quede con ratio razonablemente horizontal.
         function columnasParaN(n) {
             if (n <= 1) return 1;
             if (n === 2) return 2;
@@ -478,16 +686,15 @@
 
             grid.style.setProperty("--cols", columnasParaN(n));
 
-            // 1) Sacar las celdas que dejaron de estar visibles
+            // Sacar celdas que dejaron de estar visibles
             for (const celda of [...grid.querySelectorAll(".camara")]) {
-                const path = celda.dataset.path;
-                if (!visibles.has(path)) {
-                    desconectar(path);
+                if (!visibles.has(celda.dataset.path)) {
+                    desconectar(celda.dataset.path);
                     celda.remove();
                 }
             }
 
-            // 2) Agregar las nuevas (siguiendo el orden de CAMARAS)
+            // Agregar nuevas (en el orden de CAMARAS)
             for (const cam of CAMARAS) {
                 if (!visibles.has(cam.path)) continue;
                 let celda = grid.querySelector(`[data-path="${cam.path}"]`);
@@ -498,7 +705,7 @@
                 }
             }
 
-            // 3) Reordenar
+            // Reordenar
             for (const cam of CAMARAS) {
                 const celda = grid.querySelector(`[data-path="${cam.path}"]`);
                 if (celda) grid.appendChild(celda);
@@ -525,7 +732,6 @@
         }
 
         function setEstado(celda, modo, mensaje) {
-            // modo: "loading" | "live" | "error" | "hidden"
             const estadoEl = celda.querySelector(".estado");
             const tituloEl = celda.querySelector(".titulo-cam");
             const msgEl    = estadoEl.querySelector(".msg");
@@ -552,14 +758,12 @@
         }
 
         // ==================================================================
-        // Cliente WHEP (non-trickle)
+        // Cliente WHEP (non-trickle) con Authorization header
         // ==================================================================
         async function conectar(path, celda) {
-            // Limpiar reintentos previos
             const prev = conexiones.get(path);
             if (prev?.retryTimer) clearTimeout(prev.retryTimer);
 
-            // Generación: descartar respuestas tardías
             const generation = (prev?.generation || 0) + 1;
             conexiones.set(path, { pc: null, retryTimer: null, generation });
 
@@ -574,9 +778,7 @@
                 pc.ontrack = (ev) => {
                     if (!esActual(path, generation)) return;
                     const [stream] = ev.streams;
-                    if (videoEl.srcObject !== stream) {
-                        videoEl.srcObject = stream;
-                    }
+                    if (videoEl.srcObject !== stream) videoEl.srcObject = stream;
                     setEstado(celda, "live");
                 };
 
@@ -584,9 +786,7 @@
                     if (!esActual(path, generation)) return;
                     const s = pc.iceConnectionState;
                     if (s === "failed" || s === "disconnected" || s === "closed") {
-                        if (visibles.has(path)) {
-                            programarReintento(path, celda, "Conexión perdida");
-                        }
+                        if (visibles.has(path)) programarReintento(path, celda, "Conexión perdida");
                     }
                 };
 
@@ -596,16 +796,27 @@
                 await esperarIceComplete(pc);
                 if (!esActual(path, generation)) return cleanup(pc);
 
-                const resp = await fetch(`/webrtc/${path}/whep`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/sdp" },
+                const token = getToken();
+                const resp  = await fetch(`/webrtc/${path}/whep`, {
+                    method:  "POST",
+                    headers: {
+                        "Content-Type": "application/sdp",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
                     body: pc.localDescription.sdp,
                 });
 
                 if (!esActual(path, generation)) return cleanup(pc);
 
+                // Sesión expirada — volver al login
+                if (resp.status === 401) {
+                    cleanup(pc);
+                    if (esActual(path, generation)) { clearToken(); mostrarLogin("Sesión expirada."); }
+                    return;
+                }
+
                 if (!resp.ok) {
-                    const txt = await resp.text().catch(() => "");
+                    const txt    = await resp.text().catch(() => "");
                     const motivo = resp.status === 404 || /not found/i.test(txt)
                         ? "Sin señal"
                         : `Error ${resp.status}`;
@@ -614,10 +825,8 @@
 
                 const answerSdp = await resp.text();
                 await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-
                 if (!esActual(path, generation)) return cleanup(pc);
 
-                // Guardar la PC actualizada
                 const conn = conexiones.get(path);
                 if (conn) conn.pc = pc;
             } catch (err) {
@@ -634,7 +843,7 @@
         }
 
         function cleanup(pc) {
-            if (pc) try { pc.close(); } catch (_) {}
+            if (pc) try { pc.close(); } catch {}
         }
 
         function programarReintento(path, celda, mensaje) {
@@ -650,11 +859,7 @@
                 if (visibles.has(path)) conectar(path, celda);
             }, RETRY_MS);
 
-            conexiones.set(path, {
-                pc: null,
-                retryTimer: t,
-                generation: (prev?.generation || 0),
-            });
+            conexiones.set(path, { pc: null, retryTimer: t, generation: (prev?.generation || 0) });
         }
 
         function desconectar(path) {
@@ -689,8 +894,7 @@
         // ==================================================================
         // Boot
         // ==================================================================
-        renderSelector();
-        renderGrid();
+        iniciarApp();
 
         window.addEventListener("beforeunload", cerrarTodo);
     </script>

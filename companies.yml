@@ -1,0 +1,72 @@
+# =====================================================================
+# Configuración de empresas, sites, cámaras y usuarios
+# Centro de Monitoreo de Drones
+#
+# Para generar un hash de contraseña (hacer UNA VEZ por usuario):
+#   Con el container arriba:
+#     docker exec auth_service python3 -c \
+#       "from passlib.hash import bcrypt; print(bcrypt.hash('mi-clave-aqui'))"
+#
+#   Sin container (si tenés python3 + passlib):
+#     python3 -c "from passlib.hash import bcrypt; print(bcrypt.hash('mi-clave-aqui'))"
+#
+# NUNCA commitear este archivo con contraseñas reales.
+# Agregarlo al .gitignore si contiene datos sensibles.
+# =====================================================================
+
+companies:
+  QUINTANA:
+    display: "Quintana Energía"
+    sites:
+      canadon-amarillo:
+        display: "Cañadón Amarillo"
+        cameras:
+          - path: dron-cam-q1-angular
+            titulo: "Q1 · Angular"
+          - path: dron-cam-q1-infrarojo
+            titulo: "Q1 · Infrarrojo"
+      canadon-seco:
+        display: "Cañadón Seco"
+        cameras:
+          - path: dron-cam-q1-zoom
+            titulo: "Q1 · Zoom"
+      efo:
+        display: "EFO"
+        cameras: []
+      qcyo:
+        display: "QCYO"
+        cameras:
+          - path: dock-cam-dock-1
+            titulo: "Dock 1"
+
+# =====================================================================
+# Usuarios
+#
+# roles disponibles:
+#   admin_empresa  → ve todos los sites y drones de su empresa
+#   admin_site     → ve todos los drones de los sites listados en "sites"
+#   viewer_drone   → ve solo los drones listados en "allowed_paths"
+# =====================================================================
+
+users:
+  # Admin completo de QUINTANA — ve todo
+  - username: admin_quintana
+    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
+    empresa: QUINTANA
+    rol: admin_empresa
+
+  # Supervisor de Cañadón Amarillo — ve solo ese site
+  - username: supervisor_ca
+    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
+    empresa: QUINTANA
+    rol: admin_site
+    sites:
+      - canadon-amarillo
+
+  # Operador de una sola cámara
+  - username: operador_angular
+    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
+    empresa: QUINTANA
+    rol: viewer_drone
+    allowed_paths:
+      - dron-cam-q1-angular
