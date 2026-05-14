@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Centro de Monitoreo - Drones</title>
+    <style>
+        body { background-color: #1e1e1e; color: white; font-family: Arial, sans-serif; margin: 0; display: flex; }
+        .sidebar { width: 250px; background: #2d2d2d; height: 100vh; padding: 20px; box-sizing: border-box; }
+        .grid { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 100vh; gap: 5px; background: #000; padding: 5px; }
+        .camara { background: #333; position: relative; border: 1px solid #444; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .titulo-cam { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; z-index: 10; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Dispositivos</h2>
+        <ul>
+            <li>Dron 1 (Cañadón)</li>
+            <li>Dron 2 (Planta)</li>
+        </ul>
+        <p><small>El dashboard está activo.</small></p>
+    </div>
+
+    <div class="grid">
+        <!-- Celda 1: Cargamos el reproductor nativo de MediaMTX mediante el proxy de Nginx -->
+        <div class="camara">
+            <div class="titulo-cam">Dron 1</div>
+            <!-- La ruta /webrtc/ será procesada por Nginx -->
+            <iframe src="/webrtc/dron1/" allow="autoplay; fullscreen"></iframe>
+        </div>
+        
+        <div class="camara">
+            <div class="titulo-cam">Dron 2</div>
+            <iframe src="/webrtc/dron2/" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <div class="camara"><div class="titulo-cam">Cámara Vacía</div></div>
+        <div class="camara"><div class="titulo-cam">Cámara Vacía</div></div>
+    </div>
+
+</body>
+</html>

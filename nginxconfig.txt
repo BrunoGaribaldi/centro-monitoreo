@@ -1,0 +1,125 @@
+# =====================================================================
+# Despliegue del nginx del HOST (no del container)
+# Asume servidor con nginx instalado + dominio apuntando al servidor.
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# PASO 1 — Verificar que nginx tenga el módulo stream
+# ---------------------------------------------------------------------
+nginx -V 2>&1 | grep -o with-stream
+# Si no aparece, instalá: sudo apt install libnginx-mod-stream
+
+# ---------------------------------------------------------------------
+# PASO 2 — Crear el archivo de password para basic auth
+# ---------------------------------------------------------------------
+sudo apt install apache2-utils      # si no tenés htpasswd
+sudo htpasswd -c /etc/nginx/.htpasswd_drones operador
+# (te pide la clave dos veces. Si después querés agregar otro user,
+#  corré el mismo comando SIN el -c)
+
+# ---------------------------------------------------------------------
+# PASO 3 — Agregar bloque stream para RTMP (opcional)
+# ---------------------------------------------------------------------
+# En el setup actual MediaMTX ya escucha en 0.0.0.0:1935 (lo mapeamos
+# en docker-compose), así que no necesitamos el stream block.
+# Si en algún momento querés que TODO el tráfico pase por el nginx del
+# host (logging, rate limiting, etc.), cambiá el mapeo en docker-compose
+# a "127.0.0.1:1936:1935" y descomentá esto en /etc/nginx/nginx.conf:
+#
+# stream {
+#     server {
+#         listen 1935;
+#         proxy_pass 127.0.0.1:1936;
+#     }
+# }
+
+# ---------------------------------------------------------------------
+# PASO 4 — Crear el sitio
+# ---------------------------------------------------------------------
+sudo nano /etc/nginx/sites-available/drones.conf
+
+# --- pegar esto adentro ---
+server {
+    listen 80;
+    listen [::]:80;
+    server_name panel.dronefieldoperation.cloud;
+
+    # Certbot escribe sus challenges acá; el resto va a HTTPS.
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name panel.dronefieldoperation.cloud;
+
+    # Certbot va a llenar estas rutas en el paso 6.
+    # ssl_certificate     /etc/letsencrypt/live/panel.dronefieldoperation.cloud/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/panel.dronefieldoperation.cloud/privkey.pem;
+
+    # Basic auth para todo el sitio.
+    auth_basic           "Centro de Monitoreo";
+    auth_basic_user_file /etc/nginx/.htpasswd_drones;
+
+    # 1) Dashboard (HTML estático servido por el container dashboard_drones)
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 2) Señalización WebRTC / WHEP -> MediaMTX
+    location /webrtc/ {
+        rewrite ^/webrtc/(.*)$ /$1 break;
+
+        proxy_pass http://127.0.0.1:8889;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+        proxy_buffering    off;
+    }
+}
+
+# ---------------------------------------------------------------------
+# PASO 5 — Activar el sitio y probar
+# ---------------------------------------------------------------------
+sudo ln -s /etc/nginx/sites-available/drones.conf /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# ---------------------------------------------------------------------
+# PASO 6 — Emitir el certificado SSL
+# ---------------------------------------------------------------------
+sudo certbot --nginx -d panel.dronefieldoperation.cloud
+# Cuando pregunte si querés redirect HTTP -> HTTPS, elegí "2: Redirect".
+# Certbot va a descomentar los ssl_certificate del bloque 443.
+
+# ---------------------------------------------------------------------
+# PASO 7 — Firewall del servidor (ufw, ejemplo)
+# ---------------------------------------------------------------------
+sudo ufw allow 80/tcp           # certbot + redirect
+sudo ufw allow 443/tcp          # HTTPS dashboard
+sudo ufw allow 1935/tcp         # RTMP de FlightHub 2
+sudo ufw allow 8189/udp         # WebRTC ICE (paquetes de video)
+sudo ufw reload
+
+# ---------------------------------------------------------------------
+# URLs finales
+# ---------------------------------------------------------------------
+# Dashboard:     https://panel.dronefieldoperation.cloud
+# Publicar RTMP: rtmp://publisher:<MEDIAMTX_PUBLISH_PASS>@panel.dronefieldoperation.cloud:1935/dron1
+#                rtmp://publisher:<MEDIAMTX_PUBLISH_PASS>@panel.dronefieldoperation.cloud:1935/dron2

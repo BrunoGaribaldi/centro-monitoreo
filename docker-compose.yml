@@ -1,0 +1,38 @@
+services:
+  # 1. Servidor de Video (MediaMTX)
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx_drones
+    restart: unless-stopped
+    environment:
+      # Estas variables las lee el yaml vía ${...}
+      MEDIAMTX_PUBLISH_PASS: ${MEDIAMTX_PUBLISH_PASS}
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      # RTMP de ingesta: PÚBLICO (FlightHub 2 publica desde internet).
+      # La autenticación la hace MediaMTX (publishUser/publishPass).
+      - "1935:1935/tcp"
+      # WebRTC ICE/UDP: PÚBLICO (los paquetes de video viajan por acá).
+      - "8189:8189/udp"
+      # WebRTC signaling: SOLO loopback (lo consume el nginx del host).
+      - "127.0.0.1:8889:8889/tcp"
+    networks:
+      - monitoring_net
+
+  # 2. Servidor de la página estática (Nginx dentro de Docker)
+  dashboard_web:
+    image: nginx:alpine
+    container_name: dashboard_drones
+    restart: unless-stopped
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    ports:
+      # Solo loopback: el nginx del host lo proxea con TLS + basic auth.
+      - "127.0.0.1:8080:80/tcp"
+    networks:
+      - monitoring_net
+
+networks:
+  monitoring_net:
+    driver: bridge
