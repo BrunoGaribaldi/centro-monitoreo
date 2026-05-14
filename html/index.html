@@ -14,29 +14,27 @@
 </head>
 <body>
 
-    <div class="sidebar">
-        <h2>Dispositivos</h2>
-        <ul>
-            <li>Dron 1 (Cañadón)</li>
-            <li>Dron 2 (Planta)</li>
-        </ul>
-        <p><small>El dashboard está activo.</small></p>
-    </div>
-
     <div class="grid">
         <!-- Celda 1: Cargamos el reproductor nativo de MediaMTX mediante el proxy de Nginx -->
         <div class="camara">
-            <div class="titulo-cam">Dron 1</div>
+            <div class="titulo-cam">CAm-Dock1</div>
             <!-- La ruta /webrtc/ será procesada por Nginx -->
-            <iframe src="/webrtc/dron1/" allow="autoplay; fullscreen"></iframe>
+            <iframe src="/webrtc/dock-cam-dock-1/" allow="autoplay; fullscreen"></iframe>
         </div>
         
         <div class="camara">
-            <div class="titulo-cam">Dron 2</div>
-            <iframe src="/webrtc/dron2/" allow="autoplay; fullscreen"></iframe>
+            <div class="titulo-cam">CAm-Q1-Angular</div>
+            <iframe src="/webrtc/dron-cam-q1-angular/" allow="autoplay; fullscreen"></iframe>
         </div>
-        <div class="camara"><div class="titulo-cam">Cámara Vacía</div></div>
-        <div class="camara"><div class="titulo-cam">Cámara Vacía</div></div>
+        <div class="camara">
+            <div class="titulo-cam">CAm-Q1-Infrarojo</div>
+            <iframe src="/webrtc/dron-cam-q1-infrarojo/" allow="autoplay; fullscreen"></iframe>
+        </div>
+        <div class="camara">
+            <div class="titulo-cam">CAm-Q1-Zoom</div>
+            <iframe src="/webrtc/dron-cam-q1-zoom/" allow="autoplay; fullscreen"></iframe>
+        </div>
+
     </div>
 
 </body>

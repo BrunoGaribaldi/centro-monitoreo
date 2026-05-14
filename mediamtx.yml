@@ -29,7 +29,7 @@ authInternalUsers:
     permissions:
       - action: read
       - action: playback
-  # Regla 2: PUBLICACIÓN SIN AUTH en dron1/dron2.
+  # Regla 2: PUBLICACIÓN SIN AUTH en rutas.
   # FlightHub 2 NO soporta el formato rtmp://user:pass@host/path: aunque
   # le pongas credenciales en la URL, no las manda. Por eso dejamos
   # publish abierto en los paths conocidos.
@@ -40,9 +40,13 @@ authInternalUsers:
     ips: []
     permissions:
       - action: publish
-        path: dron1
+        path: dock-cam-dock-1
       - action: publish
-        path: dron2
+        path: dron-cam-q1-angular
+      - action: publish
+        path: dron-cam-q1-infrarojo
+      - action: publish
+        path: dron-cam-q1-zoom
 
 # =====================================================================
 # RTMP (ingesta desde FlightHub 2)
@@ -76,9 +80,15 @@ srt: false
 # Paths (un path por dron)
 # =====================================================================
 paths:
-  dron1:
+  dock-cam-dock-1:
     source: publisher
     record: false
-  dron2:
+  dron-cam-q1-angular:
+    source: publisher
+    record: false
+  dron-cam-q1-infrarojo:
+    source: publisher
+    record: false
+  dron-cam-q1-zoom:
     source: publisher
     record: false
