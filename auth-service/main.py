@@ -1,4 +1,5 @@
 import re
+import time
 import yaml
 from typing import Optional
 
@@ -12,10 +13,20 @@ CONFIG_PATH = "/app/companies.yml"
 
 app = FastAPI(docs_url=None, redoc_url=None)
 
+_config_cache: dict = {}
+_config_cache_time: float = 0.0
+CONFIG_CACHE_TTL = 30  # segundos
+
 
 def load_config() -> dict:
+    global _config_cache, _config_cache_time
+    now = time.time()
+    if _config_cache and now - _config_cache_time < CONFIG_CACHE_TTL:
+        return _config_cache
     with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+        _config_cache = yaml.safe_load(f)
+    _config_cache_time = now
+    return _config_cache
 
 
 def find_user(cfg: dict, username: str) -> Optional[dict]:

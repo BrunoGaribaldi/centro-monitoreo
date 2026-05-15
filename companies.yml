@@ -6,15 +6,23 @@
 # Authelia maneja autenticación (login, sesión, 2FA, brute force, audit).
 # Este archivo solo mantiene el mapping de usuarios a empresa/rol/sites/paths
 # para que el auth-service decida qué cámaras puede ver cada user.
+#
+# Estructura de paths:
+#   dron-cam-q{N}-angular      cámara angular del dron N
+#   dron-cam-q{N}-infrarojo    cámara infrarroja del dron N
+#   dron-cam-q{N}-zoom         cámara zoom del dron N
+#   dock-cam-dock-{N}          cámara fija del dock N
 # =====================================================================
 
 companies:
   QUINTANA:
     display: "Quintana Energy"
     sites:
+
       canadon-amarillo:
         display: "Cañadón Amarillo"
         cameras:
+          # Dron Q1
           - path: dron-cam-q1-angular
             titulo: "Q1 · Angular"
           - path: dron-cam-q1-infrarojo
@@ -23,12 +31,95 @@ companies:
             titulo: "Q1 · Zoom"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
+          # Dron Q2
+          - path: dron-cam-q2-angular
+            titulo: "Q2 · Angular"
+          - path: dron-cam-q2-infrarojo
+            titulo: "Q2 · Infrarrojo"
+          - path: dron-cam-q2-zoom
+            titulo: "Q2 · Zoom"
+          - path: dock-cam-dock-2
+            titulo: "Dock 2"
+          # Dron Q3
+          - path: dron-cam-q3-angular
+            titulo: "Q3 · Angular"
+          - path: dron-cam-q3-infrarojo
+            titulo: "Q3 · Infrarrojo"
+          - path: dron-cam-q3-zoom
+            titulo: "Q3 · Zoom"
+          - path: dock-cam-dock-3
+            titulo: "Dock 3"
+          # Dron Q4
+          - path: dron-cam-q4-angular
+            titulo: "Q4 · Angular"
+          - path: dron-cam-q4-infrarojo
+            titulo: "Q4 · Infrarrojo"
+          - path: dron-cam-q4-zoom
+            titulo: "Q4 · Zoom"
+          - path: dock-cam-dock-4
+            titulo: "Dock 4"
+
       canadon-seco:
         display: "Cañadón Seco"
-        cameras: []
+        cameras:
+          # Dron Q5
+          - path: dron-cam-q5-angular
+            titulo: "Q5 · Angular"
+          - path: dron-cam-q5-infrarojo
+            titulo: "Q5 · Infrarrojo"
+          - path: dron-cam-q5-zoom
+            titulo: "Q5 · Zoom"
+          - path: dock-cam-dock-5
+            titulo: "Dock 5"
+          # Dron Q6
+          - path: dron-cam-q6-angular
+            titulo: "Q6 · Angular"
+          - path: dron-cam-q6-infrarojo
+            titulo: "Q6 · Infrarrojo"
+          - path: dron-cam-q6-zoom
+            titulo: "Q6 · Zoom"
+          - path: dock-cam-dock-6
+            titulo: "Dock 6"
+          # Dron Q7
+          - path: dron-cam-q7-angular
+            titulo: "Q7 · Angular"
+          - path: dron-cam-q7-infrarojo
+            titulo: "Q7 · Infrarrojo"
+          - path: dron-cam-q7-zoom
+            titulo: "Q7 · Zoom"
+          - path: dock-cam-dock-7
+            titulo: "Dock 7"
+
       efo:
         display: "EFO"
-        cameras: []
+        cameras:
+          # Dron Q8
+          - path: dron-cam-q8-angular
+            titulo: "Q8 · Angular"
+          - path: dron-cam-q8-infrarojo
+            titulo: "Q8 · Infrarrojo"
+          - path: dron-cam-q8-zoom
+            titulo: "Q8 · Zoom"
+          - path: dock-cam-dock-8
+            titulo: "Dock 8"
+          # Dron Q9
+          - path: dron-cam-q9-angular
+            titulo: "Q9 · Angular"
+          - path: dron-cam-q9-infrarojo
+            titulo: "Q9 · Infrarrojo"
+          - path: dron-cam-q9-zoom
+            titulo: "Q9 · Zoom"
+          - path: dock-cam-dock-9
+            titulo: "Dock 9"
+          # Dron Q10
+          - path: dron-cam-q10-angular
+            titulo: "Q10 · Angular"
+          - path: dron-cam-q10-infrarojo
+            titulo: "Q10 · Infrarrojo"
+          - path: dron-cam-q10-zoom
+            titulo: "Q10 · Zoom"
+          - path: dock-cam-dock-10
+            titulo: "Dock 10"
 
 # =====================================================================
 # Usuarios
@@ -50,12 +141,12 @@ users:
   - username: ingenieria
     rol: superadmin
 
-  # Admin completo de QUINTANA — ve todo lo de la empresa
+  # Admin completo de QUINTANA — ve todo lo de la empresa (40 cámaras)
   - username: admin_quintana
     empresa: QUINTANA
     rol: admin_empresa
 
-  # Supervisor de Cañadón Amarillo — ve solo ese site
+  # Supervisor de Cañadón Amarillo — ve Q1-Q4 (16 cámaras)
   - username: supervisor_ca
     empresa: QUINTANA
     rol: admin_site
