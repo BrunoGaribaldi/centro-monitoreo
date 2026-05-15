@@ -29,22 +29,18 @@ authInternalUsers:
     permissions:
       - action: read
       - action: playback
-  # Regla 2: PUBLICACIÓN SIN AUTH en rutas conocidas (regex).
+  # Regla 2: PUBLICACIÓN SIN AUTH en cualquier path.
   # FlightHub 2 NO soporta el formato rtmp://user:pass@host/path: aunque
-  # le pongas credenciales en la URL, no las manda. Por eso dejamos
-  # publish abierto en los paths conocidos.
+  # le pongas credenciales en la URL, no las manda. Los nombres de cámaras
+  # son arbitrarios (definidos al configurar cada dron en FlightHub 2), así
+  # que no hay whitelist de paths posible.
   # MITIGACIÓN PENDIENTE: restringir por IP origen con whitelist de los
   # rangos DJI (ver §12 deuda técnica del Readme).
   - user: any
     pass: ""
     ips: []
     permissions:
-      # dock-cam-dock-1 ... dock-cam-dock-10
       - action: publish
-        path: "~^dock-cam-dock-([1-9]|10)$"
-      # dron-cam-q1-angular ... dron-cam-q10-zoom
-      - action: publish
-        path: "~^dron-cam-q([1-9]|10)-(angular|infrarojo|zoom)$"
 
 # =====================================================================
 # RTMP (ingesta desde FlightHub 2)
@@ -75,12 +71,19 @@ rtsp: false
 srt: false
 
 # =====================================================================
-# Paths (regex que cubre los 40 streams: 10 drones × 4 cámaras)
+# Paths activos (un bloque por cámara; MediaMTX crea el path al conectar)
+# Agregar un bloque cuando se incorpore un nuevo dron.
 # =====================================================================
 paths:
-  "~^dock-cam-dock-([1-9]|10)$":
+  dock-cam-dock-1:
     source: publisher
     record: false
-  "~^dron-cam-q([1-9]|10)-(angular|infrarojo|zoom)$":
+  dron-cam-q1-angular:
+    source: publisher
+    record: false
+  dron-cam-q1-infrarojo:
+    source: publisher
+    record: false
+  dron-cam-q1-zoom:
     source: publisher
     record: false
