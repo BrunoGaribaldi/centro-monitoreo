@@ -447,6 +447,38 @@
             border-radius: 2px;
         }
 
+        /* ----- Toggle de ajuste de video (cover / contain) ----- */
+        .fit-toggle {
+            display: inline-flex;
+            background: var(--color-surface-alt);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            gap: 2px;
+        }
+        .fit-btn {
+            padding: 5px 11px;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            color: var(--color-text-muted);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .fit-btn:hover {
+            background: var(--color-surface);
+            color: var(--color-text);
+        }
+        .fit-btn.active {
+            background: var(--color-primary);
+            color: #fff;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
+        }
+
         /* ----- Paginación ----- */
         .pager {
             display: inline-flex;
@@ -596,7 +628,10 @@
         .camara video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            /* --video-fit lo setea el toggle "Ajustar / Llenar" de la toolbar.
+               cover = llena el slot recortando los bordes que sobran (sin distorsión).
+               contain = muestra la imagen completa con letterbox (barras negras). */
+            object-fit: var(--video-fit, cover);
             display: block;
             background: #000;
         }
@@ -733,12 +768,22 @@
             <!-- Filtros drill-down: el contenido depende del rol del user. -->
             <div class="toolbar-group" id="filters"></div>
 
-            <!-- Selector de tamaño de cuadrícula (1, 4, 9, 16, 25). -->
+            <!-- Selector de tamaño de cuadrícula (1, 2, 3, 4, 9, 16, 25). -->
             <div class="toolbar-group">
                 <span class="toolbar-group-title">Cuadrícula</span>
                 <div class="grid-sizer" id="grid-sizer">
                     <button type="button" class="size-btn" data-size="1" title="1 cámara">
                         <span class="grid-icon single" style="--icon-cols:1"><span></span></span>
+                    </button>
+                    <button type="button" class="size-btn" data-size="2" title="2 cámaras">
+                        <span class="grid-icon" style="--icon-cols:2">
+                            <span></span><span></span>
+                        </span>
+                    </button>
+                    <button type="button" class="size-btn" data-size="3" title="3 cámaras">
+                        <span class="grid-icon" style="--icon-cols:3">
+                            <span></span><span></span><span></span>
+                        </span>
                     </button>
                     <button type="button" class="size-btn" data-size="4" title="2 × 2 = 4 cámaras">
                         <span class="grid-icon" style="--icon-cols:2">
@@ -769,6 +814,17 @@
                             <span></span><span></span><span></span><span></span><span></span>
                         </span>
                     </button>
+                </div>
+            </div>
+
+            <!-- Toggle de ajuste de video (sin distorsionar la imagen). -->
+            <div class="toolbar-group">
+                <span class="toolbar-group-title">Ajuste</span>
+                <div class="fit-toggle" id="fit-toggle">
+                    <button type="button" class="fit-btn" data-fit="cover"
+                            title="Llenar el reproductor (recorta bordes si sobran)">Llenar</button>
+                    <button type="button" class="fit-btn" data-fit="contain"
+                            title="Ajustar al reproductor (muestra imagen completa con bordes)">Ajustar</button>
                 </div>
             </div>
 
@@ -835,16 +891,20 @@
         const RETRY_MS       = 4000;
         const ICE_TIMEOUT_MS = 4000;
 
-        // ---- Estado de UI (filtros + tamaño de grid + página) ----
+        // ---- Estado de UI (filtros + tamaño de grid + página + fit mode) ----
         const STORAGE_FILTROS = "centro-monitoreo:filtros";
         const STORAGE_SIZE    = "centro-monitoreo:gridSize";
-        const TAMANOS_VALIDOS = [1, 4, 9, 16, 25];
-        const COLS_POR_TAMANO = { 1: 1, 4: 2, 9: 3, 16: 4, 25: 5 };
+        const STORAGE_FIT     = "centro-monitoreo:fitMode";
+        const TAMANOS_VALIDOS = [1, 2, 3, 4, 9, 16, 25];
+        const COLS_POR_TAMANO = { 1: 1, 2: 2, 3: 3, 4: 2, 9: 3, 16: 4, 25: 5 };
         const TAMANO_DEFAULT  = 9;
+        const FITS_VALIDOS    = ["cover", "contain"];
+        const FIT_DEFAULT     = "cover";
 
         // Multi-select: cada filtro es un Set. Set vacío = "todos los items".
         let filtros = { empresas: new Set(), sites: new Set(), dispositivos: new Set() };
         let gridSize = TAMANO_DEFAULT;
+        let fitMode = FIT_DEFAULT;
         let pagina = 0;
         let panelAbierto = null;   // referencia al .filter-panel actualmente abierto
 
@@ -892,6 +952,13 @@
                 const n = parseInt(raw, 10);
                 gridSize = TAMANOS_VALIDOS.includes(n) ? n : TAMANO_DEFAULT;
             } catch { gridSize = TAMANO_DEFAULT; }
+
+            // Fit mode (cover / contain)
+            try {
+                const raw = localStorage.getItem(STORAGE_FIT);
+                fitMode = FITS_VALIDOS.includes(raw) ? raw : FIT_DEFAULT;
+            } catch { fitMode = FIT_DEFAULT; }
+            aplicarFit(fitMode);
 
             // Filtros: solo conservar los items que existan en la jerarquía
             // actual (defensa contra empresas/sitios borrados del backend).
@@ -1382,6 +1449,25 @@
                 guardarPreferenciasUI();
                 renderToolbar();
                 renderGrid();
+            });
+        });
+
+        // Toggle de ajuste de video (cover / contain) — afecta a TODAS las
+        // celdas del grid via la CSS var --video-fit.
+        function aplicarFit(mode) {
+            if (!FITS_VALIDOS.includes(mode)) mode = FIT_DEFAULT;
+            fitMode = mode;
+            document.documentElement.style.setProperty("--video-fit", mode);
+            document.querySelectorAll("#fit-toggle .fit-btn").forEach(b => {
+                b.classList.toggle("active", b.dataset.fit === mode);
+            });
+        }
+        document.querySelectorAll("#fit-toggle .fit-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.dataset.fit;
+                if (mode === fitMode) return;
+                aplicarFit(mode);
+                try { localStorage.setItem(STORAGE_FIT, mode); } catch {}
             });
         });
 
