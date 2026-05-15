@@ -336,17 +336,18 @@
         }
 
         .filter-panel {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
+            /* fixed para que se superponga sobre cualquier contenedor con
+               overflow (la toolbar tiene overflow-x: auto). Las coordenadas
+               (top/left) las setea el JS según getBoundingClientRect del trigger. */
+            position: fixed;
             min-width: 220px;
-            max-width: 320px;
-            max-height: 340px;
+            max-width: 360px;
+            max-height: 60vh;
             background: var(--color-surface);
             border: 1px solid var(--color-border);
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-lg);
-            z-index: 200;
+            z-index: 2000;
             display: none;
             flex-direction: column;
             overflow: hidden;
@@ -910,24 +911,21 @@
             filtros = { empresas: new Set(), sites: new Set(), dispositivos: new Set() };
             try {
                 const raw = JSON.parse(localStorage.getItem(STORAGE_FILTROS) || "{}");
-                const empresasGuardadas    = Array.isArray(raw.empresas)    ? raw.empresas    : [];
-                const sitesGuardados       = Array.isArray(raw.sites)       ? raw.sites       : [];
-                const dispGuardados        = Array.isArray(raw.dispositivos) ? raw.dispositivos : [];
+                const empresasGuardadas = Array.isArray(raw.empresas)     ? raw.empresas     : [];
+                const sitesGuardados    = Array.isArray(raw.sites)        ? raw.sites        : [];
+                const dispGuardados     = Array.isArray(raw.dispositivos) ? raw.dispositivos : [];
 
-                for (const e of empresasGuardadas) {
-                    if (JERARQUIA[e]) filtros.empresas.add(e);
-                }
-                // Para sitios y dispositivos, validar contra TODA la jerarquía visible.
                 const sitesValidos = new Set();
-                const dispValidos  = new Set();
+                const pathsValidos = new Set();
                 for (const [, emp] of Object.entries(JERARQUIA)) {
                     for (const [sid, sdata] of Object.entries(emp.sites)) {
                         sitesValidos.add(sid);
-                        for (const cam of sdata.cameras) dispValidos.add(extraerDispositivo(cam.path));
+                        for (const cam of sdata.cameras) pathsValidos.add(cam.path);
                     }
                 }
-                for (const s of sitesGuardados) if (sitesValidos.has(s)) filtros.sites.add(s);
-                for (const d of dispGuardados)  if (dispValidos.has(d))  filtros.dispositivos.add(d);
+                for (const e of empresasGuardadas) if (JERARQUIA[e])    filtros.empresas.add(e);
+                for (const s of sitesGuardados)    if (sitesValidos.has(s)) filtros.sites.add(s);
+                for (const d of dispGuardados)     if (pathsValidos.has(d)) filtros.dispositivos.add(d);
             } catch {}
             pagina = 0;
         }
@@ -943,39 +941,17 @@
             } catch {}
         }
 
-        // Deriva el "dispositivo" desde el path. Agrupa las cámaras de un mismo
-        // dron/dock/etc. bajo un id común. Ej:
-        //   "dron-cam-q1-angular"  → "q1"
-        //   "dron-cam-q1-zoom"     → "q1"
-        //   "dock-cam-dock-1"      → "dock-1"
-        //   "dron-efo"             → "efo"          (sin patrón -cam-)
-        //   "<otro>"               → el path completo (fallback)
-        function extraerDispositivo(path) {
-            let m = path.match(/^dron-cam-(q\d+)/);    // dron con cámara tipada
-            if (m) return m[1];
-            m = path.match(/^dock-cam-(dock-\d+)/);    // dock fijo
-            if (m) return m[1];
-            m = path.match(/^dron-([^-]+)$/);          // dron-<id> sin sufijo
-            if (m) return m[1];
-            return path;
-        }
-
-        function labelDispositivo(disp) {
-            if (/^q\d+$/.test(disp))    return "Dron " + disp.toUpperCase();
-            if (disp.startsWith("dock-")) return "Dock " + disp.slice(5);
-            return disp.toUpperCase();
-        }
-
         // ==================================================================
         // Cámaras filtradas + paginación
         // ==================================================================
         // Set vacío en un filtro = "todos los items". Set con N items = AND
-        // (la cámara tiene que matchear con alguno de los items del Set).
+        // entre dimensiones, OR dentro de cada dimensión.
+        // El filtro "dispositivos" matchea por path literal (cam.path).
         function camarasFiltradas() {
             return CAMARAS.filter(cam => {
                 if (filtros.empresas.size     > 0 && !filtros.empresas.has(cam.empresa)) return false;
                 if (filtros.sites.size        > 0 && !filtros.sites.has(cam.site))       return false;
-                if (filtros.dispositivos.size > 0 && !filtros.dispositivos.has(extraerDispositivo(cam.path))) return false;
+                if (filtros.dispositivos.size > 0 && !filtros.dispositivos.has(cam.path)) return false;
                 return true;
             });
         }
@@ -1183,22 +1159,23 @@
                 }));
             }
 
-            // --- Dispositivos ---
-            // Universo de dispositivos visibles, según empresas + sitios seleccionados.
-            const dispMap = new Map();   // disp → { label, sub }
+            // --- Dispositivos (lista cámaras individuales por path/titulo literal) ---
+            // Universo de cámaras visibles, según empresas + sitios seleccionados.
+            const dispOpciones = [];
             for (const [empId, empData] of Object.entries(JERARQUIA)) {
                 if (ROL_USER === "superadmin" && filtros.empresas.size > 0 && !filtros.empresas.has(empId)) continue;
                 for (const [sid, sdata] of Object.entries(empData.sites)) {
                     if (filtros.sites.size > 0 && !filtros.sites.has(sid)) continue;
                     for (const cam of sdata.cameras) {
-                        const disp = extraerDispositivo(cam.path);
-                        if (!dispMap.has(disp)) {
-                            dispMap.set(disp, { value: disp, label: labelDispositivo(disp), sub: sdata.display });
-                        }
+                        dispOpciones.push({
+                            value: cam.path,
+                            label: cam.titulo || cam.path,
+                            sub:   sdata.display,
+                        });
                     }
                 }
             }
-            const dispOpciones = [...dispMap.values()].sort((a, b) => a.label.localeCompare(b.label, "es"));
+            dispOpciones.sort((a, b) => a.label.localeCompare(b.label, "es"));
             if (dispOpciones.length > 1) {
                 cont.appendChild(crearFilterDropdown({
                     titulo:   "Dispositivos",
@@ -1221,14 +1198,12 @@
             }
             return false;
         }
-        function dispositivoVisible(disp) {
+        function dispositivoVisible(path) {
             for (const [empId, empData] of Object.entries(JERARQUIA)) {
                 if (ROL_USER === "superadmin" && filtros.empresas.size > 0 && !filtros.empresas.has(empId)) continue;
                 for (const [sid, sdata] of Object.entries(empData.sites)) {
                     if (filtros.sites.size > 0 && !filtros.sites.has(sid)) continue;
-                    for (const cam of sdata.cameras) {
-                        if (extraerDispositivo(cam.path) === disp) return true;
-                    }
+                    if (sdata.cameras.some(c => c.path === path)) return true;
                 }
             }
             return false;
@@ -1338,12 +1313,28 @@
                 cerrarPanel();
             });
 
+            function posicionarPanel() {
+                const rect = trigger.getBoundingClientRect();
+                panel.style.top   = (rect.bottom + 6) + "px";
+                panel.style.left  = rect.left + "px";
+                panel.style.right = "auto";
+                // Si el panel se sale por la derecha del viewport, alinearlo al
+                // borde derecho del trigger en lugar del izquierdo.
+                requestAnimationFrame(() => {
+                    const panelRect = panel.getBoundingClientRect();
+                    if (panelRect.right > window.innerWidth - 8) {
+                        panel.style.left  = "auto";
+                        panel.style.right = (window.innerWidth - rect.right) + "px";
+                    }
+                });
+            }
             function abrirPanel() {
                 cerrarPanelAbierto();
                 renderLista();
                 panel.classList.add("open");
                 trigger.classList.add("is-open");
-                panelAbierto = { panel, trigger };
+                posicionarPanel();
+                panelAbierto = { panel, trigger, reposicionar: posicionarPanel };
             }
             function cerrarPanel() {
                 panel.classList.remove("open");
@@ -1378,6 +1369,10 @@
         });
         document.addEventListener("keydown", (ev) => {
             if (ev.key === "Escape" && panelAbierto) cerrarPanelAbierto();
+        });
+        // Reposicionar el panel si cambia el viewport mientras está abierto.
+        window.addEventListener("resize", () => {
+            if (panelAbierto && panelAbierto.reposicionar) panelAbierto.reposicionar();
         });
 
         function aplicarFiltros() {
