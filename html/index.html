@@ -321,19 +321,6 @@
             opacity: 0.65;
         }
         .filter-trigger.is-open .chevron { transform: rotate(180deg); }
-        .filter-trigger .count-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 18px;
-            height: 18px;
-            padding: 0 6px;
-            background: var(--color-primary);
-            color: #fff;
-            border-radius: 9px;
-            font-size: 11px;
-            font-weight: 600;
-        }
 
         .filter-panel {
             /* fixed para que se superponga sobre cualquier contenedor con
@@ -1223,7 +1210,6 @@
             trigger.className = "filter-trigger";
             trigger.innerHTML = `
                 <span class="trigger-label"></span>
-                <span class="count-badge" hidden></span>
                 <svg class="chevron" viewBox="0 0 16 16" fill="currentColor"><path d="M4 6l4 4 4-4z"/></svg>
             `;
             wrap.appendChild(trigger);
@@ -1245,21 +1231,16 @@
 
             function refrescarTrigger() {
                 const labelEl = trigger.querySelector(".trigger-label");
-                const badgeEl = trigger.querySelector(".count-badge");
                 if (local.size === 0) {
-                    labelEl.textContent = `Todos`;
+                    labelEl.textContent = "Todos";
                     trigger.classList.add("is-default");
-                    badgeEl.hidden = true;
                 } else if (local.size === 1) {
                     const item = opciones.find(o => o.value === [...local][0]);
                     labelEl.textContent = item ? item.label : "1 seleccionado";
                     trigger.classList.remove("is-default");
-                    badgeEl.hidden = true;
                 } else {
                     labelEl.textContent = `${local.size} seleccionados`;
                     trigger.classList.remove("is-default");
-                    badgeEl.textContent = local.size;
-                    badgeEl.hidden = false;
                 }
             }
 
