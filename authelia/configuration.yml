@@ -44,8 +44,8 @@ authentication_backend:
 # Estrategia híbrida:
 #   - Authelia hace AUTENTICACIÓN (sesión válida + grupo válido).
 #   - La autorización FINA por path (ej. operador que solo ve una cámara)
-#     la hace el `auth-service` en /center-auth/authz-path, llamado por
-#     nginx con un segundo auth_request.
+#     la hace el `auth-service` en /center-auth/webrtc-authz, que combina
+#     en un solo subrequest la validación de sesión y la de path.
 # Por eso acá NO hay reglas regex por path individual: los grupos son
 # gruesos (por empresa) y el filtro fino vive en companies.yml.
 access_control:
@@ -86,7 +86,7 @@ session:
   # `secret` viene por env: AUTHELIA_SESSION_SECRET
   expiration: '8h'
   inactivity: '1h'
-  remember_me: '1M'
+  remember_me: '8h'  # igual a expiration — "recordarme" no extiende la sesión
 
   cookies:
     - domain: 'panel.dronefieldoperation.cloud'
