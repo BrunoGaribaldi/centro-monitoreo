@@ -57,21 +57,7 @@ server {
         proxy_set_header X-Forwarded-For       $remote_addr;
     }
 
-    # 0b) auth-service — chequea allowed_paths del user en companies.yml.
-    # Recibe el username vía $remote_user (lo setea auth_request_set en
-    # cada location pública). $webrtc_path se setea en /webrtc/ antes
-    # del auth_request para preservar la URI original.
-    location = /internal/cameras/authz {
-        internal;
-        proxy_pass              http://127.0.0.1:19100/center-auth/authz-path;
-        proxy_pass_request_body off;
-        proxy_set_header        Content-Length  "";
-        proxy_set_header        Host            $host;
-        proxy_set_header        Remote-User     $remote_user;
-        proxy_set_header        X-Original-URI  $webrtc_path;
-    }
-
-    # 0c) WebRTC combinado: el auth-service llama a Authelia internamente
+    # 0b) WebRTC combinado: el auth-service llama a Authelia internamente
     # y luego valida el path. Nginx solo admite UNA directiva auth_request
     # por location; este endpoint combina las dos validaciones en uno.
     location = /internal/webrtc/authz {

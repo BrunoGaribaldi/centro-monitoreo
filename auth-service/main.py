@@ -128,8 +128,10 @@ async def webrtc_authz(request: Request):
 
     allowed_paths, _ = resolve_cameras(rec, cfg)
     if requested_path not in allowed_paths:
+        print(f"webrtc-authz: user={remote_user} path={requested_path} → 403 (path not allowed)")
         return Response(status_code=403)
 
+    print(f"webrtc-authz: user={remote_user} path={requested_path} → 200")
     return Response(status_code=200, headers={"Remote-User": remote_user})
 
 
@@ -153,32 +155,3 @@ def cameras(remote_user: Optional[str] = Header(default=None, alias="Remote-User
         "rol":     rec.get("rol"),
         "sites":   sites,
     }
-
-
-# ── GET /center-auth/authz-path ────────────────────────────────────────────────
-# Llamado por nginx auth_request en cada request a /webrtc/<path>/whep.
-# Authelia ya validó la sesión; este endpoint chequea autorización fina por path.
-# Devuelve 200 si el user puede ver ese path, 403 si no.
-@app.get("/center-auth/authz-path")
-def authz_path(
-    remote_user:    Optional[str] = Header(default=None, alias="Remote-User"),
-    x_original_uri: Optional[str] = Header(default=None),
-):
-    if not remote_user or not x_original_uri:
-        return Response(status_code=401)
-
-    m = re.match(r"^/webrtc/([^/?]+)", x_original_uri)
-    if not m:
-        return Response(status_code=401)
-    requested_path = m.group(1)
-
-    cfg = load_config()
-    rec = find_user(cfg, remote_user)
-    if not rec:
-        return Response(status_code=403)
-
-    allowed_paths, _ = resolve_cameras(rec, cfg)
-    if requested_path not in allowed_paths:
-        return Response(status_code=403)
-
-    return Response(status_code=200)
