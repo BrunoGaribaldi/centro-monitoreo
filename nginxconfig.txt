@@ -71,6 +71,26 @@ server {
         proxy_set_header        X-Original-URI  $webrtc_path;
     }
 
+    # 0c) WebRTC combinado: el auth-service llama a Authelia internamente
+    # y luego valida el path. Nginx solo admite UNA directiva auth_request
+    # por location; este endpoint combina las dos validaciones en uno.
+    location = /internal/webrtc/authz {
+        internal;
+        proxy_pass              http://127.0.0.1:19100/center-auth/webrtc-authz;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length       "";
+        proxy_set_header        Host                 $host;
+        proxy_set_header        Cookie               $http_cookie;
+        proxy_set_header        X-Original-Method    $request_method;
+        proxy_set_header        X-Original-URL       $scheme://$host$request_uri;
+        proxy_set_header        X-Forwarded-Method   $request_method;
+        proxy_set_header        X-Forwarded-Proto    $scheme;
+        proxy_set_header        X-Forwarded-Host     $host;
+        proxy_set_header        X-Forwarded-Uri      $request_uri;
+        proxy_set_header        X-Forwarded-For      $remote_addr;
+        proxy_set_header        X-Webrtc-Path        $webrtc_path;
+    }
+
     # ── 1) Portal de Authelia ─────────────────────────────────────────
     location /authelia/ {
         proxy_pass         http://127.0.0.1:9091;
@@ -124,22 +144,18 @@ server {
     }
 
     # ── 4) Señalización WebRTC / WHEP → MediaMTX ──────────────────────
-    # Doble auth_request:
-    #   #1 Authelia → ¿sesión válida + grupo válido?  (filtro grueso)
-    #   #2 auth-service → ¿este user puede ver ESTE path?  (filtro fino)
+    # auth_request al endpoint combinado (0c): valida sesión Authelia +
+    # autorización fina por path en un solo subrequest.
+    # NOTA: nginx solo admite UNA auth_request por location — el endpoint
+    # 0c del auth-service realiza las dos validaciones internamente.
     location /webrtc/ {
         # Preservar la URI original (rewrites alteran $uri pero no $request_uri).
         set $webrtc_path $request_uri;
 
-        # #1 — sesión Authelia
-        auth_request /internal/authelia/authz;
+        auth_request /internal/webrtc/authz;
         auth_request_set $remote_user $upstream_http_remote_user;
         error_page 401 = @whep_unauthorized;
         error_page 403 = @whep_unauthorized;
-
-        # #2 — autorización por path en auth-service
-        # (corre solo si #1 devolvió 200 — auth_request es secuencial)
-        auth_request /internal/cameras/authz;
 
         rewrite ^/webrtc/(.*)$ /$1 break;
 

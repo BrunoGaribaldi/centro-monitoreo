@@ -2,8 +2,11 @@ import re
 import yaml
 from typing import Optional
 
-from fastapi import FastAPI, Header
+import httpx
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import Response, JSONResponse
+
+AUTHELIA_AUTHZ_URL = "http://authelia:9091/api/authz/auth-request"
 
 CONFIG_PATH = "/app/companies.yml"
 
@@ -77,6 +80,57 @@ def resolve_cameras(user: dict, cfg: dict) -> tuple[list[str], list[dict]]:
             "cameras": cams,
         })
     return paths, sites
+
+
+# ── GET /center-auth/webrtc-authz ─────────────────────────────────────────────
+# Llamado por nginx auth_request en cada request a /webrtc/<path>/whep.
+# Combina las dos validaciones:
+#   1. Llama a Authelia internamente para verificar sesión y obtener username.
+#   2. Chequea autorización fina por path contra companies.yml.
+# Esto reemplaza el patrón (inválido en nginx) de dos auth_request en serie.
+@app.get("/center-auth/webrtc-authz")
+async def webrtc_authz(request: Request):
+    # Reenviar a Authelia los headers que necesita para validar la sesión
+    authelia_headers = {
+        "X-Original-Method":  request.headers.get("x-original-method", "GET"),
+        "X-Original-URL":     request.headers.get("x-original-url", ""),
+        "X-Forwarded-Method": request.headers.get("x-forwarded-method", "GET"),
+        "X-Forwarded-Proto":  request.headers.get("x-forwarded-proto", "https"),
+        "X-Forwarded-Host":   request.headers.get("x-forwarded-host", ""),
+        "X-Forwarded-Uri":    request.headers.get("x-forwarded-uri", ""),
+        "X-Forwarded-For":    request.headers.get("x-forwarded-for", ""),
+        "Cookie":             request.headers.get("cookie", ""),
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            authelia_resp = await client.get(AUTHELIA_AUTHZ_URL, headers=authelia_headers, timeout=10.0)
+    except Exception:
+        return Response(status_code=503)
+
+    if authelia_resp.status_code != 200:
+        return Response(status_code=authelia_resp.status_code)
+
+    remote_user = authelia_resp.headers.get("Remote-User")
+    if not remote_user:
+        return Response(status_code=401)
+
+    webrtc_path_header = request.headers.get("x-webrtc-path", "")
+    m = re.match(r"^/webrtc/([^/?]+)", webrtc_path_header)
+    if not m:
+        return Response(status_code=401)
+    requested_path = m.group(1)
+
+    cfg = load_config()
+    rec = find_user(cfg, remote_user)
+    if not rec:
+        return Response(status_code=403)
+
+    allowed_paths, _ = resolve_cameras(rec, cfg)
+    if requested_path not in allowed_paths:
+        return Response(status_code=403)
+
+    return Response(status_code=200, headers={"Remote-User": remote_user})
 
 
 # ── GET /center-auth/cameras ───────────────────────────────────────────────────

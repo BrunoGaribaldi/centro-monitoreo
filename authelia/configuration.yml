@@ -130,4 +130,3 @@ notifier:
 identity_validation:
   reset_password:
     # `jwt_secret` viene por env: AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET
-    jwt_lifetime: '5m'
