@@ -29,8 +29,10 @@ companies:
       efo:
         display: "EFO"
         cameras: 
-          - path: dron-efo
+          - path: dron-efo-angular
             titulo: "efo · angular"
+          - path: dock-efo
+            titulo: "efo · dock"
 
 # =====================================================================
 # Usuarios
