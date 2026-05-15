@@ -1,37 +1,52 @@
-import os
 import re
 import yaml
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import Response
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel
+from fastapi import FastAPI, Header
+from fastapi.responses import Response, JSONResponse
 
-SECRET_KEY  = os.environ["AUTH_SECRET_KEY"]  # KeyError en startup si falta — intencional
-ALGORITHM   = "HS256"
-TOKEN_TTL_H = 8
 CONFIG_PATH = "/app/companies.yml"
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto") #MOTOR DE BCRYPT.
-app     = FastAPI(docs_url=None, redoc_url=None)  # sin docs en producción
+app = FastAPI(docs_url=None, redoc_url=None)
 
 
-def load_config() -> dict: #leemos el companies.yml y lo converite a un diccionario de python.
+def load_config() -> dict:
     with open(CONFIG_PATH) as f:
         return yaml.safe_load(f)
 
 
-#Esto devuelve la lista completa de los paths MediaMTX que puede ver el usuario y devuelve sites --> lista de diccionarios con la estructura para el dashboard.
+def find_user(cfg: dict, username: str) -> Optional[dict]:
+    return next((u for u in cfg.get("users", []) if u.get("username") == username), None)
+
+
+# Devuelve (allowed_paths, sites_response) según el rol del usuario.
+# Roles:
+#   superadmin    → cross-empresa, ve TODO
+#   admin_empresa → todos los sites de su empresa
+#   admin_site    → solo los sites listados en user["sites"]
+#   viewer_drone  → solo los paths listados en user["allowed_paths"]
 def resolve_cameras(user: dict, cfg: dict) -> tuple[list[str], list[dict]]:
-    """Devuelve (allowed_paths, sites_response) según el rol del usuario."""
-    empresa_data = cfg["companies"].get(user["empresa"])
+    rol = user.get("rol")
+
+    # Superadmin: itera todas las companies, devuelve todo con etiqueta de empresa
+    if rol == "superadmin":
+        paths: list[str] = []
+        sites: list[dict] = []
+        for empresa_id, empresa_data in cfg.get("companies", {}).items():
+            for sid, sdata in empresa_data.get("sites", {}).items():
+                cams = sdata.get("cameras", [])
+                paths.extend(c["path"] for c in cams)
+                sites.append({
+                    "site":    sid,
+                    "display": sdata.get("display", sid),
+                    "empresa": empresa_data.get("display", empresa_id),
+                    "cameras": cams,
+                })
+        return paths, sites
+
+    empresa_data = cfg.get("companies", {}).get(user.get("empresa"))
     if not empresa_data:
         return [], []
-
-    rol = user["rol"]
 
     if rol == "admin_empresa":
         allowed_sites = empresa_data["sites"]
@@ -64,95 +79,52 @@ def resolve_cameras(user: dict, cfg: dict) -> tuple[list[str], list[dict]]:
     return paths, sites
 
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+# ── GET /center-auth/cameras ───────────────────────────────────────────────────
+# Lo llama el dashboard tras autenticarse en Authelia. nginx inyecta Remote-User
+# (validado por el auth_request a Authelia). Devuelve la lista de sites/cameras
+# que el user puede ver según companies.yml.
+@app.get("/center-auth/cameras")
+def cameras(remote_user: Optional[str] = Header(default=None, alias="Remote-User")):
+    if not remote_user:
+        return JSONResponse(status_code=401, content={"error": "missing Remote-User"})
 
+    cfg = load_config()
+    rec = find_user(cfg, remote_user)
+    if not rec:
+        return JSONResponse(status_code=403, content={"error": "user not in companies.yml"})
 
-# ── POST /center-auth/login ────────────────────────────────────────────────────
-#flujo: leer companies.yml --> buscar el username en la lista de users, verificar la contra con bcrypt, llamar a resolve_cameras() para ver que puede ver, crear jwt con los datos adentro, devolver token + estructura de sites.
-@app.post("/center-auth/login")
-def login(body: LoginRequest):
-    cfg   = load_config()
-    users = cfg.get("users", [])
-    rec   = next((u for u in users if u["username"] == body.username), None)
-
-    if not rec or not pwd_ctx.verify(body.password, rec["password_hash"]):
-        raise HTTPException(status_code=401, detail="Credenciales inválidas")
-
-    allowed_paths, sites = resolve_cameras(rec, cfg)
-
-    token = jwt.encode(
-        {
-            "sub":           rec["username"],
-            "empresa":       rec["empresa"],
-            "allowed_paths": allowed_paths,
-            "exp":           datetime.now(timezone.utc) + timedelta(hours=TOKEN_TTL_H),
-        },
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    )
-
+    _, sites = resolve_cameras(rec, cfg)
     return {
-        "token":   token,
-        "empresa": rec["empresa"],
-        "rol":     rec["rol"],
+        "empresa": rec.get("empresa"),
+        "rol":     rec.get("rol"),
         "sites":   sites,
     }
 
 
-# ── GET /center-auth/cameras ───────────────────────────────────────────────────
-# Lo llama el dashboard cuando el user ya tiene el token. Lee el header con el bearer, valida el jwt, extrae el usuario, busca el usuario, llama a resolve_cameras(), devuelve la estructura de sites.
-@app.get("/center-auth/cameras")
-def cameras(authorization: Optional[str] = Header(default=None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token requerido")
-
-    try:
-        payload = jwt.decode(
-            authorization.split(" ", 1)[1], SECRET_KEY, algorithms=[ALGORITHM]
-        )
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
-
-    cfg   = load_config()
-    users = cfg.get("users", [])
-    rec   = next((u for u in users if u["username"] == payload["sub"]), None)
-    if not rec:
-        raise HTTPException(status_code=401, detail="Usuario no encontrado")
-
-    _, sites = resolve_cameras(rec, cfg)
-    return {"sites": sites}
-
-
-# ── GET /center-auth/verify ────────────────────────────────────────────────────
-# Llamado internamente por nginx auth_request en cada request a /webrtc/.
-# Debe responder rápido: solo valida JWT y verifica el path en allowed_paths.
-# lee el header Authorization con el bearer,  Leer el header X-Original-URI (lo pone nginx: "/webrtc/dron-cam-q1-angular/whep"), valida jwt, extrae el path, verifica que el path este en allowed path  del jwt y devuelve 200 o 403.
-@app.get("/center-auth/verify")
-def verify(
-    authorization:  Optional[str] = Header(default=None),
+# ── GET /center-auth/authz-path ────────────────────────────────────────────────
+# Llamado por nginx auth_request en cada request a /webrtc/<path>/whep.
+# Authelia ya validó la sesión; este endpoint chequea autorización fina por path.
+# Devuelve 200 si el user puede ver ese path, 403 si no.
+@app.get("/center-auth/authz-path")
+def authz_path(
+    remote_user:    Optional[str] = Header(default=None, alias="Remote-User"),
     x_original_uri: Optional[str] = Header(default=None),
 ):
-    if not authorization or not authorization.startswith("Bearer "):
+    if not remote_user or not x_original_uri:
         return Response(status_code=401)
 
-    try:
-        payload = jwt.decode(
-            authorization.split(" ", 1)[1], SECRET_KEY, algorithms=[ALGORITHM]
-        )
-    except JWTError:
-        return Response(status_code=401)
-
-    if not x_original_uri:
-        return Response(status_code=401)
-
-    # Extraer el drone path de /webrtc/<path>/... (ej: /webrtc/cam-q1-angular/whep)
     m = re.match(r"^/webrtc/([^/?]+)", x_original_uri)
     if not m:
         return Response(status_code=401)
+    requested_path = m.group(1)
 
-    if m.group(1) not in payload.get("allowed_paths", []):
+    cfg = load_config()
+    rec = find_user(cfg, remote_user)
+    if not rec:
+        return Response(status_code=403)
+
+    allowed_paths, _ = resolve_cameras(rec, cfg)
+    if requested_path not in allowed_paths:
         return Response(status_code=403)
 
     return Response(status_code=200)

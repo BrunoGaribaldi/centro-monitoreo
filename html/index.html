@@ -57,100 +57,6 @@
             flex-direction: column;
         }
 
-        /* ===== Login overlay ===== */
-        .login-overlay {
-            position: fixed;
-            inset: 0;
-            background: var(--color-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .login-overlay.hidden { display: none; }
-
-        .login-card {
-            background: var(--color-surface);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            padding: 40px;
-            width: 100%;
-            max-width: 380px;
-            box-shadow: var(--shadow-lg);
-        }
-        .login-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 28px;
-        }
-        .login-logo img {
-            height: 32px;
-            object-fit: contain;
-        }
-        .login-logo-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--color-text);
-            line-height: 1.2;
-        }
-        .login-logo-sub {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            margin-top: 2px;
-        }
-        .login-field {
-            margin-bottom: 16px;
-        }
-        .login-field label {
-            display: block;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--color-text-muted);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .login-field input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            font-size: 14px;
-            color: var(--color-text);
-            background: var(--color-surface);
-            outline: none;
-            transition: border-color 0.15s;
-        }
-        .login-field input:focus { border-color: var(--color-primary); }
-        .login-btn {
-            width: 100%;
-            padding: 11px;
-            background: var(--color-primary);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-            margin-top: 4px;
-        }
-        .login-btn:hover    { background: var(--color-primary-hover); }
-        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .login-error {
-            margin-top: 12px;
-            color: var(--color-error);
-            font-size: 13px;
-            text-align: center;
-            min-height: 20px;
-        }
-
         /* ===== Topbar ===== */
         .topbar {
             height: var(--topbar-h);
@@ -414,34 +320,10 @@
             .actions { padding-left: 0; border-left: none; }
             .grid { padding: 8px; gap: 8px; }
             .titulo-cam { font-size: 11px; padding: 4px 8px; }
-            .login-card { padding: 28px 20px; }
         }
     </style>
 </head>
 <body>
-
-    <!-- Login overlay — visible hasta que el usuario se autentique -->
-    <div class="login-overlay" id="login-overlay">
-        <div class="login-card">
-            <div class="login-logo">
-                <img src="images.png" alt="NQN Petrol">
-                <div>
-                    <div class="login-logo-title">Centro de Monitoreo</div>
-                    <div class="login-logo-sub">Streaming en vivo</div>
-                </div>
-            </div>
-            <div class="login-field">
-                <label>Usuario</label>
-                <input type="text" id="login-username" autocomplete="username" placeholder="usuario">
-            </div>
-            <div class="login-field">
-                <label>Contraseña</label>
-                <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
-            </div>
-            <button class="login-btn" id="login-btn">Ingresar</button>
-            <div class="login-error" id="login-error"></div>
-        </div>
-    </div>
 
     <header class="topbar">
         <div class="brand">
@@ -468,38 +350,21 @@
         // ==================================================================
         // Autenticación
         // ==================================================================
-        const AUTH_KEY    = "centro-monitoreo:token";
-        const API_LOGIN   = "/center-auth/login";
+        // Authelia maneja login/sesión vía cookie HttpOnly. El dashboard no
+        // toca tokens: si la cookie es válida los fetches funcionan; si no,
+        // el servidor devuelve 401/302 y redirigimos al portal.
         const API_CAMERAS = "/center-auth/cameras";
 
-        function getToken()   { try { return localStorage.getItem(AUTH_KEY); } catch { return null; } }
-        function saveToken(t) { try { localStorage.setItem(AUTH_KEY, t); }    catch {} }
-        function clearToken() { try { localStorage.removeItem(AUTH_KEY); }    catch {} }
-
-        function tokenExpired(token) {
-            try {
-                const b64     = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-                const payload = JSON.parse(atob(b64));
-                return Date.now() / 1000 >= payload.exp;
-            } catch { return true; }
-        }
-
-        function mostrarLogin(msg) {
-            cerrarTodo();
-            document.getElementById("login-overlay").classList.remove("hidden");
-            document.getElementById("login-error").textContent = msg || "";
-            setTimeout(() => document.getElementById("login-username").focus(), 50);
-        }
-        function ocultarLogin() {
-            document.getElementById("login-overlay").classList.add("hidden");
-            document.getElementById("login-error").textContent = "";
+        function redirigirAlPortal() {
+            const rd = encodeURIComponent(window.location.href);
+            window.location.href = `/authelia/?rd=${rd}`;
         }
 
         // ==================================================================
         // Configuración de cámaras (dinámica — cargada desde /center-auth/cameras)
         // ==================================================================
         // Para agregar/sacar cámaras: editá companies.yml en el servidor.
-        const CAMARAS = [];   // se llena en configurarCamaras() tras el login
+        const CAMARAS = [];   // se llena en configurarCamaras() tras login
 
         const STORAGE_KEY  = "centro-monitoreo:visibles";
         const RETRY_MS     = 4000;
@@ -514,6 +379,7 @@
                         titulo:      cam.titulo || cam.path,
                         site:        site.site,
                         siteDisplay: site.display,
+                        empresa:     site.empresa,   // solo presente para superadmin
                     });
                 }
             }
@@ -527,65 +393,26 @@
         }
 
         async function iniciarApp() {
-            const token = getToken();
-            if (!token || tokenExpired(token)) { mostrarLogin(); return; }
             try {
-                const r = await fetch(API_CAMERAS, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (!r.ok) { clearToken(); mostrarLogin("Sesión expirada. Ingresá de nuevo."); return; }
+                const r = await fetch(API_CAMERAS, { credentials: "same-origin" });
+                if (r.status === 401) { redirigirAlPortal(); return; }
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
                 const { sites } = await r.json();
                 configurarCamaras(sites);
-                ocultarLogin();
                 renderSelector();
                 renderGrid();
-            } catch { mostrarLogin("Error de red. Intentá de nuevo."); }
+            } catch (err) {
+                console.warn("No se pudo cargar /center-auth/cameras:", err);
+                document.getElementById("grid").innerHTML =
+                    '<div style="padding:40px;font-family:sans-serif;color:#dc2626">' +
+                    'Error de red al cargar las cámaras. Recargá la página.</div>';
+            }
         }
 
-        // ==================================================================
-        // Login form
-        // ==================================================================
-        document.getElementById("login-btn").addEventListener("click", async () => {
-            const username = document.getElementById("login-username").value.trim();
-            const password = document.getElementById("login-password").value;
-            const errEl    = document.getElementById("login-error");
-            const btn      = document.getElementById("login-btn");
-
-            if (!username || !password) { errEl.textContent = "Ingresá usuario y contraseña."; return; }
-            btn.disabled = true;
-            errEl.textContent = "";
-            try {
-                const r = await fetch(API_LOGIN, {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({ username, password }),
-                });
-                if (!r.ok) {
-                    errEl.textContent = (await r.json().catch(() => ({}))).detail || "Credenciales incorrectas.";
-                    return;
-                }
-                const data = await r.json();
-                saveToken(data.token);
-                configurarCamaras(data.sites);
-                ocultarLogin();
-                renderSelector();
-                renderGrid();
-            } catch { errEl.textContent = "Error de red. Intentá de nuevo."; }
-            finally   { btn.disabled = false; }
-        });
-
-        document.getElementById("login-password").addEventListener("keydown", e => {
-            if (e.key === "Enter") document.getElementById("login-btn").click();
-        });
-
         document.getElementById("btn-logout").addEventListener("click", () => {
-            clearToken();
             cerrarTodo();
-            CAMARAS.length = 0;
-            visibles.clear();
-            document.getElementById("grid").innerHTML = "";
-            document.getElementById("selector").innerHTML = "";
-            mostrarLogin();
+            // Logout en Authelia → vuelve al portal.
+            window.location.href = "/authelia/logout";
         });
 
         // ==================================================================
@@ -622,6 +449,11 @@
                 chip.type = "button";
                 chip.className = "chip" + (visibles.has(cam.path) ? " active" : "");
                 chip.dataset.path = cam.path;
+                // En modo superadmin (cross-empresa), aclarar la empresa en el tooltip
+                const tooltip = cam.empresa
+                    ? `${cam.empresa} · ${cam.siteDisplay} · ${cam.titulo}`
+                    : `${cam.siteDisplay} · ${cam.titulo}`;
+                chip.title = tooltip;
                 chip.innerHTML = `<span class="dot"></span><span>${cam.titulo}</span>`;
                 chip.addEventListener("click", () => toggle(cam.path));
                 cont.appendChild(chip);
@@ -796,22 +628,19 @@
                 await esperarIceComplete(pc);
                 if (!esActual(path, generation)) return cleanup(pc);
 
-                const token = getToken();
-                const resp  = await fetch(`/webrtc/${path}/whep`, {
+                const resp = await fetch(`/webrtc/${path}/whep`, {
                     method:  "POST",
-                    headers: {
-                        "Content-Type": "application/sdp",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
+                    headers: { "Content-Type": "application/sdp" },
+                    credentials: "same-origin",
                     body: pc.localDescription.sdp,
                 });
 
                 if (!esActual(path, generation)) return cleanup(pc);
 
-                // Sesión expirada — volver al login
+                // Sesión Authelia caducada — volver al portal
                 if (resp.status === 401) {
                     cleanup(pc);
-                    if (esActual(path, generation)) { clearToken(); mostrarLogin("Sesión expirada."); }
+                    if (esActual(path, generation)) redirigirAlPortal();
                     return;
                 }
 

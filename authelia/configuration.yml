@@ -1,0 +1,133 @@
+# =====================================================================
+# Authelia - Configuración principal
+# Centro de Monitoreo de Drones · NQN Petrol
+#
+# Docs: https://www.authelia.com/configuration/prologue/introduction/
+# Secrets sensibles van por env vars (AUTHELIA_*), NO van acá.
+# =====================================================================
+
+# Server: escucha en 9091 con prefijo /authelia para que nginx lo proxee
+# en https://panel.dronefieldoperation.cloud/authelia/
+server:
+  address: 'tcp://0.0.0.0:9091/authelia'
+
+log:
+  level: info
+  format: text
+
+theme: auto
+
+# TOTP disponible (cualquier user puede activárselo desde su portal).
+# Hoy las reglas solo exigen one_factor; subimos a two_factor cuando
+# todos los users tengan su TOTP configurado.
+totp:
+  issuer: 'NQN Petrol'
+
+# =====================================================================
+# Backend de usuarios
+# =====================================================================
+# File backend: users_database.yml en /config/ del container.
+# Para producción se puede migrar a LDAP sin cambiar el resto.
+authentication_backend:
+  password_reset:
+    disable: true                    # sin SMTP por ahora
+  refresh_interval: '5m'
+  file:
+    path: /config/users_database.yml
+    watch: true                      # recarga sin restart cuando cambia
+    password:
+      algorithm: argon2
+
+# =====================================================================
+# Access Control: política deny por defecto, reglas explícitas
+# =====================================================================
+# Estrategia híbrida:
+#   - Authelia hace AUTENTICACIÓN (sesión válida + grupo válido).
+#   - La autorización FINA por path (ej. operador que solo ve una cámara)
+#     la hace el `auth-service` en /center-auth/authz-path, llamado por
+#     nginx con un segundo auth_request.
+# Por eso acá NO hay reglas regex por path individual: los grupos son
+# gruesos (por empresa) y el filtro fino vive en companies.yml.
+access_control:
+  default_policy: deny
+
+  rules:
+    # ---- Assets del dashboard + API de cameras ----
+    # Cualquier user autenticado puede cargar el dashboard y consultar
+    # /center-auth/cameras (que filtra según su rol).
+    - domain: 'panel.dronefieldoperation.cloud'
+      resources:
+        - '^/$'
+        - '^/index\.html$'
+        - '^/favicon\.png$'
+        - '^/images\.png$'
+        - '^/center-auth/.*'
+      policy: one_factor
+
+    # ---- Streams WebRTC ----
+    # Authelia solo valida que el user tenga UN grupo válido. El
+    # auth-service decide después si puede ver ESE path específico.
+    # Cuando se agreguen empresas, sumá `group:<empresa>-*` al subject.
+    - domain: 'panel.dronefieldoperation.cloud'
+      resources: ['^/webrtc/.*']
+      subject:
+        - 'group:superadmins'
+        - 'group:quintana-admins'
+        - 'group:quintana-ca'
+        - 'group:quintana-operadores'
+      policy: one_factor
+
+    # Todo lo demás cae al default deny.
+
+# =====================================================================
+# Sesiones (cookies en el dominio principal)
+# =====================================================================
+session:
+  # `secret` viene por env: AUTHELIA_SESSION_SECRET
+  expiration: '8h'
+  inactivity: '1h'
+  remember_me: '1M'
+
+  cookies:
+    - domain: 'panel.dronefieldoperation.cloud'
+      authelia_url: 'https://panel.dronefieldoperation.cloud/authelia/'
+      default_redirection_url: 'https://panel.dronefieldoperation.cloud/'
+      name: 'authelia_session'
+      same_site: 'lax'
+
+# =====================================================================
+# Protección brute force
+# =====================================================================
+# 5 intentos fallidos en 2 minutos = ban de 5 minutos.
+regulation:
+  max_retries: 5
+  find_time: '2m'
+  ban_time: '5m'
+
+# =====================================================================
+# Storage: SQLite local (suficiente hasta cientos de users)
+# =====================================================================
+# /config/data está en un docker volume nombrado → persiste entre
+# `docker compose down/up`. El propio /config NO se persiste para que
+# configuration.yml y users_database.yml siempre vengan del repo.
+storage:
+  # `encryption_key` viene por env: AUTHELIA_STORAGE_ENCRYPTION_KEY
+  local:
+    path: /config/data/db.sqlite3
+
+# =====================================================================
+# Notifier: filesystem (para tokens TOTP setup; sin SMTP por ahora)
+# =====================================================================
+# Los mensajes (ej. link para activar 2FA) se escriben acá. Se accede
+# vía `docker exec authelia cat /config/data/notifications.txt`.
+notifier:
+  filesystem:
+    filename: /config/data/notifications.txt
+
+# =====================================================================
+# Validación de identidad (campos requeridos en Authelia 4.38+)
+# =====================================================================
+identity_validation:
+  reset_password:
+    # `jwt_secret` viene por env: AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET
+    jwt_lifetime: '5m'

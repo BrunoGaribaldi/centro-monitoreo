@@ -1,0 +1,57 @@
+# =====================================================================
+# Authelia · Backend de usuarios (file backend)
+# Centro de Monitoreo de Drones · NQN Petrol
+#
+# Este archivo es la PLANTILLA. Hacé:
+#   cp authelia/users_database.yml.example authelia/users_database.yml
+# y reemplazá los placeholders REEMPLAZAR_CON_HASH_ARGON2 con hashes reales.
+#
+# users_database.yml NO se commitea (está en .gitignore).
+#
+# Cómo generar un hash:
+#   docker run --rm authelia/authelia:4.38 \
+#     authelia crypto hash generate argon2 --password 'mi-clave-aqui'
+#
+# El `username` de cada entrada debe coincidir EXACTAMENTE con el
+# `username` correspondiente en companies.yml.
+#
+# Grupos (cómo se mapean a las reglas de access_control):
+#   - superadmins         → ven todo (validación gruesa en Authelia,
+#                            granularidad la decide el auth-service)
+#   - quintana-admins     → group para admin_empresa de QUINTANA
+#   - quintana-ca         → group para admin_site de Cañadón Amarillo
+#   - quintana-operadores → group para viewer_drone de QUINTANA
+# =====================================================================
+
+users:
+  ingenieria:
+    disabled: false
+    displayname: "ingenieria (Superadmin)"
+    password: "REEMPLAZAR_CON_HASH_ARGON2"
+    email: nqn.petrol.srl@gmail.com
+    groups:
+      - superadmins
+
+  admin_quintana:
+    disabled: false
+    displayname: "Admin Quintana"
+    password: "REEMPLAZAR_CON_HASH_ARGON2"
+    email: admin@quintana.example
+    groups:
+      - quintana-admins
+
+  supervisor_ca:
+    disabled: false
+    displayname: "Supervisor Cañadón Amarillo"
+    password: "REEMPLAZAR_CON_HASH_ARGON2"
+    email: supervisor.ca@quintana.example
+    groups:
+      - quintana-ca
+
+  operador_angular:
+    disabled: false
+    displayname: "Operador Q1 Angular"
+    password: "REEMPLAZAR_CON_HASH_ARGON2"
+    email: operador.angular@quintana.example
+    groups:
+      - quintana-operadores

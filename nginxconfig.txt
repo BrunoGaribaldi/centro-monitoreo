@@ -1,14 +1,15 @@
 # =====================================================================
 # Despliegue del nginx del HOST (no del container)
-# Asume servidor con nginx instalado + dominio apuntando al servidor.
+# Centro de Monitoreo · NQN Petrol
 #
-# Estrategia: hacemos el despliegue en DOS FASES para resolver el clásico
-# huevo-y-gallina del SSL:
-#   FASE 1 -> Config solo HTTP (sin :443). nginx arranca, certbot puede
-#             validar el dominio.
-#   FASE 2 -> Certbot --nginx emite el cert y AGREGA solo el bloque :443
-#             con los ssl_certificate llenos + convierte el :80 en
-#             redirect.
+# Stack:
+#   - dashboard estático (container)  → 127.0.0.1:18082
+#   - MediaMTX WebRTC signaling       → 127.0.0.1:8889
+#   - auth-service (autorización fina) → 127.0.0.1:19100
+#   - Authelia (autenticación)        → 127.0.0.1:9091
+#
+# Estrategia: dos fases (HTTP → SSL con certbot) para resolver el clásico
+# huevo-y-gallina del SSL.
 # =====================================================================
 
 # ---------------------------------------------------------------------
@@ -16,7 +17,8 @@
 # ---------------------------------------------------------------------
 # - DNS: panel.dronefieldoperation.cloud apuntando a la IP del server.
 #   Verificalo:  dig +short panel.dronefieldoperation.cloud
-# - Containers arriba: docker compose ps  -> los tres en "Up"
+# - Containers arriba: docker compose ps  -> los 4 en "Up"
+#   (mediamtx, dashboard_drones, auth_service, authelia)
 # - Paquetes:
 sudo apt update
 sudo apt install -y nginx certbot python3-certbot-nginx
@@ -32,8 +34,64 @@ server {
     listen [::]:80;
     server_name panel.dronefieldoperation.cloud;
 
-    # ── 1) Dashboard estático -> container dashboard_drones ───────────
+    # ── 0) Endpoints internos para auth_request ───────────────────────
+    # Estos endpoints solo los puede invocar el propio nginx (directiva
+    # `internal`). Validan la sesión contra Authelia y la autorización
+    # fina por path contra el auth-service.
+
+    # 0a) Authelia — valida cookie de sesión.
+    location = /internal/authelia/authz {
+        internal;
+        proxy_pass http://127.0.0.1:9091/api/authz/auth-request;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length        "";
+
+        # Authelia necesita la URL original para evaluar las reglas de
+        # access_control (que matchean por domain/resources).
+        proxy_set_header X-Original-Method     $request_method;
+        proxy_set_header X-Original-URL        $scheme://$host$request_uri;
+        proxy_set_header X-Forwarded-Method    $request_method;
+        proxy_set_header X-Forwarded-Proto     $scheme;
+        proxy_set_header X-Forwarded-Host      $host;
+        proxy_set_header X-Forwarded-Uri       $request_uri;
+        proxy_set_header X-Forwarded-For       $remote_addr;
+    }
+
+    # 0b) auth-service — chequea allowed_paths del user en companies.yml.
+    # Recibe el username vía $remote_user (lo setea auth_request_set en
+    # cada location pública). $webrtc_path se setea en /webrtc/ antes
+    # del auth_request para preservar la URI original.
+    location = /internal/cameras/authz {
+        internal;
+        proxy_pass              http://127.0.0.1:19100/center-auth/authz-path;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length  "";
+        proxy_set_header        Host            $host;
+        proxy_set_header        Remote-User     $remote_user;
+        proxy_set_header        X-Original-URI  $webrtc_path;
+    }
+
+    # ── 1) Portal de Authelia ─────────────────────────────────────────
+    location /authelia/ {
+        proxy_pass         http://127.0.0.1:9091;
+        proxy_set_header   Host               $host;
+        proxy_set_header   X-Real-IP          $remote_addr;
+        proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto  $scheme;
+        proxy_set_header   X-Forwarded-Host   $host;
+        proxy_set_header   X-Forwarded-Uri    $request_uri;
+        proxy_read_timeout 30;
+    }
+
+    # ── 2) Dashboard estático (protegido con Authelia) ────────────────
     location / {
+        auth_request /internal/authelia/authz;
+        error_page 401 = @to_authelia;
+
+        # Capturar headers que devuelve Authelia para tracking opcional
+        auth_request_set $remote_user   $upstream_http_remote_user;
+        auth_request_set $remote_groups $upstream_http_remote_groups;
+
         proxy_pass http://127.0.0.1:18082;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
@@ -41,71 +99,85 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # ── 2) Auth service (login + cameras API) ─────────────────────────
+    # ── 3) Auth-service /center-auth/cameras (protegido con Authelia) ─
+    # El auth-service NO valida sesión: lee Remote-User inyectado por
+    # nginx (que viene de Authelia tras el auth_request).
     location /center-auth/ {
+        auth_request /internal/authelia/authz;
+        error_page 401 = @to_authelia_json;
+
+        auth_request_set $remote_user   $upstream_http_remote_user;
+        auth_request_set $remote_groups $upstream_http_remote_groups;
+        auth_request_set $remote_name   $upstream_http_remote_name;
+        auth_request_set $remote_email  $upstream_http_remote_email;
+
         proxy_pass         http://127.0.0.1:19100;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Remote-User       $remote_user;
+        proxy_set_header   Remote-Groups     $remote_groups;
+        proxy_set_header   Remote-Name       $remote_name;
+        proxy_set_header   Remote-Email      $remote_email;
         proxy_read_timeout 30;
     }
 
-    # ── 3) Location interna para nginx auth_request ───────────────────
-    # Solo nginx puede llamar a este endpoint (directiva `internal`).
-    # $webrtc_path lo setea location /webrtc/ justo antes del auth_request.
-    # Las variables seteadas con `set` en el request padre son accesibles
-    # en los subrequests de auth_request.
-    location = /center-auth-internal/verify {
-        internal;
-        proxy_pass              http://127.0.0.1:19100/center-auth/verify;
-        proxy_pass_request_body off;
-        proxy_set_header        Content-Length  "";
-        proxy_set_header        Host            $host;
-        proxy_set_header        X-Original-URI  $webrtc_path;
-        # Authorization se hereda automáticamente del request original
-    }
-
-    # ── 4) Señalización WebRTC / WHEP -> MediaMTX (protegido con JWT) ─
+    # ── 4) Señalización WebRTC / WHEP → MediaMTX ──────────────────────
+    # Doble auth_request:
+    #   #1 Authelia → ¿sesión válida + grupo válido?  (filtro grueso)
+    #   #2 auth-service → ¿este user puede ver ESTE path?  (filtro fino)
     location /webrtc/ {
-        # Capturar la URI original antes de que el rewrite la modifique.
-        # $request_uri no se altera por rewrites (a diferencia de $uri).
+        # Preservar la URI original (rewrites alteran $uri pero no $request_uri).
         set $webrtc_path $request_uri;
 
-        # Verificar JWT antes de proxear a MediaMTX.
-        # Devuelve 200 (ok) o 401/403 (denegado).
-        auth_request /center-auth-internal/verify;
+        # #1 — sesión Authelia
+        auth_request /internal/authelia/authz;
+        auth_request_set $remote_user $upstream_http_remote_user;
         error_page 401 = @whep_unauthorized;
         error_page 403 = @whep_unauthorized;
+
+        # #2 — autorización por path en auth-service
+        # (corre solo si #1 devolvió 200 — auth_request es secuencial)
+        auth_request /internal/cameras/authz;
 
         rewrite ^/webrtc/(.*)$ /$1 break;
 
         proxy_pass http://127.0.0.1:8889;
 
-        # IMPORTANTE: MediaMTX devuelve Location: /<path>/whep/<id> sin el
-        # prefijo /webrtc/. Esta línea lo reescribe para que el browser
-        # encuentre el endpoint correcto en el PATCH de trickle ICE.
+        # MediaMTX devuelve Location: /<path>/whep/<id> sin el prefijo
+        # /webrtc/. Esto lo reescribe para que el browser pegue el PATCH
+        # de trickle ICE en la URL correcta.
         proxy_redirect ~^/(.*)$ /webrtc/$1;
 
-        # Limpiar Authorization antes de llegar a MediaMTX.
-        # auth_request ya procesó el JWT; MediaMTX no debe verlo.
-        proxy_set_header Authorization     "";
-
         proxy_http_version 1.1;
-        proxy_set_header Upgrade           $http_upgrade;
-        proxy_set_header Connection        "upgrade";
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        "upgrade";
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
         proxy_read_timeout 86400;
         proxy_buffering    off;
     }
 
-    # ── 5) Respuesta cuando auth_request deniega acceso ───────────────
+    # ── 5) Handlers de error ──────────────────────────────────────────
+    # Para navegación HTML: redirigir al portal con ?rd=<url-actual>.
+    location @to_authelia {
+        return 302 $scheme://$host/authelia/?rd=$scheme://$host$request_uri;
+    }
+
+    # Para fetches XHR (/center-auth/*): devolver 401 JSON.
+    # El frontend detecta 401 y hace window.location al portal.
+    location @to_authelia_json {
+        default_type application/json;
+        return 401 '{"error":"unauthorized","login":"/authelia/"}';
+    }
+
+    # Para WHEP (no navegable): devolver 401 JSON.
     location @whep_unauthorized {
+        default_type application/json;
         return 401 '{"error":"unauthorized"}';
-        add_header Content-Type "application/json" always;
     }
 }
 # ---------------- fin del pegado ----------------
@@ -113,7 +185,7 @@ server {
 # Activar el sitio y probar
 sudo ln -s /etc/nginx/sites-available/drones.conf /etc/nginx/sites-enabled/
 # OJO: NO borres /etc/nginx/sites-enabled/default si el server ya hospeda
-# otros sitios -- puede tener configuración compartida importante.
+# otros sitios.
 sudo nginx -t
 sudo systemctl reload nginx
 
@@ -127,52 +199,40 @@ sudo ufw allow 8189/udp         # WebRTC ICE (paquetes de video)
 sudo ufw reload
 
 # En este punto:
-#   curl -I http://panel.dronefieldoperation.cloud
-# tendría que devolver 200 OK (dashboard con pantalla de login).
+#   curl -I http://panel.dronefieldoperation.cloud/
+# tendría que devolver 302 redirect a /authelia/.
 
 # =====================================================================
 # FASE 2 — Emitir SSL con certbot
 # =====================================================================
 sudo certbot --nginx -d panel.dronefieldoperation.cloud
-# - Cuando pregunte por redirect HTTP->HTTPS, ELEGÍ "2: Redirect".
-# - Certbot va a:
-#     a) Agregar dentro del MISMO archivo un bloque "server { listen 443 ssl ...}"
-#        con todas las locations duplicadas + las líneas ssl_certificate llenas.
-#     b) Modificar el bloque :80 para que devuelva 301 a https://...
+# - Cuando pregunte por redirect HTTP→HTTPS, elegí "2: Redirect".
+# - Certbot duplica el server{} en un bloque :443 con ssl_certificate
+#   llenos y modifica el :80 para que solo haga 301.
 #
-# Después de certbot:
+# Después:
 sudo nginx -t
 sudo systemctl reload nginx
 
 # =====================================================================
-# ACTUALIZACIÓN — si ya tenés nginx+certbot y solo agregás autenticación
+# ACTUALIZACIÓN — si ya tenés nginx+certbot corriendo
 # =====================================================================
-# Si el servidor ya estaba corriendo (fase 1 y 2 ya hechas), solo hay
-# que editar el archivo existente y agregar los bloques nuevos.
+# Hay que copiar TODOS los bloques (locations + handlers @) al bloque :443
+# existente, o al único bloque server{} si todavía no corriste certbot.
 #
-# El archivo certbot lo habrá duplicado en un bloque :443.
-# Hay que agregar los bloques nuevos en AMBOS bloques (el :80 y el :443)
-# o solo en el :443 si el :80 ya solo hace redirect.
-#
-# Los bloques a agregar son los marcados ── 2), 3), 4) y 5) arriba.
-# El bloque ── 4) /webrtc/ REEMPLAZA al /webrtc/ que ya existe.
-#
-# Después de editar:
+# Después:
 sudo nginx -t && sudo systemctl reload nginx
 
 # =====================================================================
 # URLs finales
 # =====================================================================
-# Dashboard:      https://panel.dronefieldoperation.cloud
-# Publicar RTMP:  rtmp://panel.dronefieldoperation.cloud:1935/dock-cam-dock-1
-#                 rtmp://panel.dronefieldoperation.cloud:1935/dron-cam-q1-angular
-#                 (etc. — sin user/pass porque FlightHub 2 los ignora)
+# Dashboard:         https://panel.dronefieldoperation.cloud/
+# Portal de Authelia: https://panel.dronefieldoperation.cloud/authelia/
+# Publicar RTMP:     rtmp://panel.dronefieldoperation.cloud:1935/<path>
+#                    (FlightHub 2 ignora user/pass)
 
 # =====================================================================
 # Renovación automática del certificado
 # =====================================================================
-# El paquete certbot ya instala un timer systemd que renueva cada 60 días.
-# Verificá que esté activo:
 systemctl list-timers | grep certbot
-# Y simulá una renovación (sin escribir nada):
 sudo certbot renew --dry-run

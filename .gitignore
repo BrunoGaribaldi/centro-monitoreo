@@ -2,6 +2,10 @@
 .env
 *.local
 
+# Authelia: tiene hashes argon2 reales de los users.
+# Commiteamos solo el .example.
+authelia/users_database.yml
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

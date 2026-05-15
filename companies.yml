@@ -1,22 +1,16 @@
 # =====================================================================
 # Configuración de empresas, sites, cámaras y usuarios
-# Centro de Monitoreo de Drones
+# Centro de Monitoreo de Drones · NQN Petrol
 #
-# Para generar un hash de contraseña (hacer UNA VEZ por usuario):
-#   Con el container arriba:
-#     docker exec auth_service python3 -c \
-#       "from passlib.hash import bcrypt; print(bcrypt.hash('mi-clave-aqui'))"
-#
-#   Sin container (si tenés python3 + passlib):
-#     python3 -c "from passlib.hash import bcrypt; print(bcrypt.hash('mi-clave-aqui'))"
-#
-# NUNCA commitear este archivo con contraseñas reales.
-# Agregarlo al .gitignore si contiene datos sensibles.
+# Las CONTRASEÑAS NO viven acá — viven en authelia/users_database.yml.
+# Authelia maneja autenticación (login, sesión, 2FA, brute force, audit).
+# Este archivo solo mantiene el mapping de usuarios a empresa/rol/sites/paths
+# para que el auth-service decida qué cámaras puede ver cada user.
 # =====================================================================
 
 companies:
   QUINTANA:
-    display: "Quintana Energía"
+    display: "Quintana Energy"
     sites:
       canadon-amarillo:
         display: "Cañadón Amarillo"
@@ -25,39 +19,44 @@ companies:
             titulo: "Q1 · Angular"
           - path: dron-cam-q1-infrarojo
             titulo: "Q1 · Infrarrojo"
-      canadon-seco:
-        display: "Cañadón Seco"
-        cameras:
           - path: dron-cam-q1-zoom
             titulo: "Q1 · Zoom"
+          - path: dock-cam-dock-1
+            titulo: "Dock 1"
+      canadon-seco:
+        display: "Cañadón Seco"
+        cameras: []
       efo:
         display: "EFO"
         cameras: []
-      qcyo:
-        display: "QCYO"
-        cameras:
-          - path: dock-cam-dock-1
-            titulo: "Dock 1"
 
 # =====================================================================
 # Usuarios
 #
-# roles disponibles:
+# Roles disponibles:
+#   superadmin     → cross-empresa, ve TODAS las cámaras de TODAS las empresas
+#                    (no requiere campo `empresa`)
 #   admin_empresa  → ve todos los sites y drones de su empresa
 #   admin_site     → ve todos los drones de los sites listados en "sites"
 #   viewer_drone   → ve solo los drones listados en "allowed_paths"
+#
+# El `username` debe coincidir EXACTAMENTE con la entrada en
+# authelia/users_database.yml. Authelia inyecta el header `Remote-User`
+# con ese valor y el auth-service hace el lookup acá.
 # =====================================================================
 
 users:
-  # Admin completo de QUINTANA — ve todo
+  # Superadmin (dueño del centro de monitoreo) — sin empresa, ve todo
+  - username: ingenieria
+    rol: superadmin
+
+  # Admin completo de QUINTANA — ve todo lo de la empresa
   - username: admin_quintana
-    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
     empresa: QUINTANA
     rol: admin_empresa
 
   # Supervisor de Cañadón Amarillo — ve solo ese site
   - username: supervisor_ca
-    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
     empresa: QUINTANA
     rol: admin_site
     sites:
@@ -65,7 +64,6 @@ users:
 
   # Operador de una sola cámara
   - username: operador_angular
-    password_hash: "REEMPLAZAR_CON_HASH_BCRYPT"
     empresa: QUINTANA
     rol: viewer_drone
     allowed_paths:
