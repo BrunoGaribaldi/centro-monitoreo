@@ -702,13 +702,90 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Responsive */
+        /* =====================================================================
+           RESPONSIVE
+           Breakpoints:
+             > 1024px  desktop  (default — todo entra en una fila horizontal)
+             720–1024  tablet   (gap más chico, sigue todo en una fila)
+             480–720   mobile   (toolbar wrap a 2 filas, ocultar tamaños 16/25)
+             < 480px   small    (ocultar también tamaño 3, paddings mínimos)
+           ===================================================================== */
+
+        @media (max-width: 1024px) {
+            .toolbar { gap: 14px; }
+            .toolbar-group { gap: 6px; }
+            .topbar { padding: 0 16px; gap: 16px; }
+        }
+
         @media (max-width: 720px) {
-            .topbar { padding: 0 14px; gap: 14px; height: auto; min-height: var(--topbar-h); flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
+            /* La topbar se vuelve flex-wrap: la brand + actions quedan arriba,
+               la toolbar baja a una segunda fila ocupando el 100%. */
+            .topbar {
+                padding: 10px 14px;
+                gap: 12px;
+                height: auto;
+                min-height: var(--topbar-h);
+                flex-wrap: wrap;
+                align-items: center;
+                box-shadow: var(--shadow-sm);
+            }
             .brand-divider, .brand-title-wrap { display: none; }
+            .brand { flex: 1; min-width: 0; }
+
+            .toolbar {
+                order: 99;             /* abajo de la fila brand+actions */
+                flex-basis: 100%;
+                gap: 12px;
+                padding: 10px 0 0;
+                margin-top: 2px;
+                border-top: 1px solid var(--color-border-soft);
+            }
             .actions { padding-left: 0; border-left: none; }
+
+            .toolbar-group-title { font-size: 9px; letter-spacing: 0.5px; }
+            .filter-trigger { padding: 6px 10px; font-size: 12px; }
+
+            /* Iconos del sizer un poco más chicos */
+            .size-btn { width: 32px; height: 28px; }
+            .grid-icon { width: 14px; height: 14px; }
+
+            /* Tamaños 16 y 25 no tienen sentido en mobile (celdas ilegibles) */
+            .size-btn[data-size="16"],
+            .size-btn[data-size="25"] { display: none; }
+
+            .fit-btn { padding: 4px 9px; font-size: 11px; }
+
             .grid { padding: 8px; gap: 8px; }
             .titulo-cam { font-size: 11px; padding: 4px 8px; }
+
+            /* El panel del filtro nunca debe salirse del viewport */
+            .filter-panel {
+                max-width: calc(100vw - 16px);
+                min-width: min(220px, calc(100vw - 16px));
+                max-height: 50vh;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-card { padding: 28px 22px; }
+
+            .topbar { padding: 8px 12px; gap: 10px; }
+            .toolbar { gap: 10px; }
+            .toolbar-group { gap: 4px; }
+
+            .size-btn { width: 30px; height: 26px; }
+            .grid-icon { width: 13px; height: 13px; }
+
+            .filter-trigger { padding: 5px 9px; font-size: 11.5px; }
+            .fit-btn { padding: 4px 8px; font-size: 10.5px; }
+
+            .grid { padding: 6px; gap: 6px; }
+            .titulo-cam { top: 8px; left: 8px; padding: 3px 7px; }
+            .celda-vacia .icono { font-size: 18px; }
+            .celda-vacia .texto { font-size: 11px; }
+
+            /* Login powered footer un poco más chico */
+            .login-powered { font-size: 9px; letter-spacing: 0.8px; }
         }
     </style>
 </head>
@@ -945,6 +1022,23 @@
             cargarPreferenciasUI();
         }
 
+        // En mobile (<= 720px) los tamaños 16 y 25 están ocultos en el CSS.
+        // Si el user los había seleccionado en desktop y abre en mobile, hay
+        // que bajarle el gridSize para que pueda interactuar con la UI.
+        function tamanoMaximoParaViewport() {
+            return window.innerWidth <= 720 ? 9 : 25;
+        }
+        function clampGridSizeAlViewport() {
+            const max = tamanoMaximoParaViewport();
+            if (gridSize > max) {
+                gridSize = max;
+                pagina = 0;
+                guardarPreferenciasUI();
+                return true;
+            }
+            return false;
+        }
+
         function cargarPreferenciasUI() {
             // Tamaño de grid
             try {
@@ -952,6 +1046,7 @@
                 const n = parseInt(raw, 10);
                 gridSize = TAMANOS_VALIDOS.includes(n) ? n : TAMANO_DEFAULT;
             } catch { gridSize = TAMANO_DEFAULT; }
+            clampGridSizeAlViewport();
 
             // Fit mode (cover / contain)
             try {
@@ -1419,8 +1514,13 @@
             if (ev.key === "Escape" && panelAbierto) cerrarPanelAbierto();
         });
         // Reposicionar el panel si cambia el viewport mientras está abierto.
+        // Y clampear el gridSize si el viewport bajó a mobile con tamaños grandes.
         window.addEventListener("resize", () => {
             if (panelAbierto && panelAbierto.reposicionar) panelAbierto.reposicionar();
+            if (clampGridSizeAlViewport()) {
+                renderToolbar();
+                renderGrid();
+            }
         });
 
         function aplicarFiltros() {
