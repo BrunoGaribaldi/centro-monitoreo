@@ -661,11 +661,17 @@
                     return;
                 }
 
-                // Si Authelia exige 2FA, manda al portal para esa parte.
+                // Si Authelia pide pasos adicionales (2FA u otro), redirige al portal.
+                // Si el redirect apunta al propio dashboard (misma origin, fuera de /authelia/),
+                // lo ignoramos y cargamos la app directamente sin navegar.
                 const redirect = data.data && data.data.redirect;
-                if (redirect && /\/2fa(\/|$)/.test(redirect)) {
-                    window.location.href = redirect;
-                    return;
+                if (redirect) {
+                    try {
+                        const url = new URL(redirect, window.location.origin);
+                        const esDashboard = url.origin === window.location.origin &&
+                                            !url.pathname.startsWith("/authelia");
+                        if (!esDashboard) { window.location.href = redirect; return; }
+                    } catch {}
                 }
 
                 // Login OK y sin 2FA pendiente — cookie ya está seteada.
@@ -682,10 +688,12 @@
             }
         });
 
-        document.getElementById("btn-logout").addEventListener("click", () => {
+        document.getElementById("btn-logout").addEventListener("click", async () => {
             cerrarTodo();
-            // Logout en Authelia → vuelve al portal.
-            window.location.href = "/authelia/logout";
+            // Llama al endpoint de logout de Authelia para que limpie la cookie,
+            // pero sin navegar: el usuario se queda en el dashboard y ve el overlay.
+            try { await fetch("/authelia/logout", { credentials: "same-origin" }); } catch {}
+            mostrarLogin();
         });
 
         // ==================================================================

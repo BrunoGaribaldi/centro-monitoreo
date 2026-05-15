@@ -161,11 +161,6 @@ server {
     }
 
     # ── 5) Handlers de error ──────────────────────────────────────────
-    # Para navegación HTML: redirigir al portal con ?rd=<url-actual>.
-    location @to_authelia {
-        return 302 $scheme://$host/authelia/?rd=$scheme://$host$request_uri;
-    }
-
     # Para fetches XHR (/center-auth/*): devolver 401 JSON.
     # El frontend detecta 401 y hace window.location al portal.
     location @to_authelia_json {
