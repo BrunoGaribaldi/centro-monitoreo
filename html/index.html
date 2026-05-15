@@ -57,6 +57,142 @@
             flex-direction: column;
         }
 
+        /* ===== Login overlay ===== */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--color-bg);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .login-overlay.visible { display: flex; }
+        body.locked { overflow: hidden; }
+
+        .login-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+        .login-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--color-border-soft);
+        }
+        .login-brand img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+        .login-brand-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-text);
+            line-height: 1.2;
+        }
+        .login-brand-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-top: 3px;
+        }
+        .login-heading {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-text);
+            margin: 0 0 4px 0;
+        }
+        .login-subheading {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin: 0 0 24px 0;
+        }
+        .login-field {
+            margin-bottom: 16px;
+        }
+        .login-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .login-field input {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--color-text);
+            background: var(--color-surface);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .login-field input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(11, 58, 120, 0.10);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 8px;
+        }
+        .login-btn:hover    { background: var(--color-primary-hover); }
+        .login-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .login-error {
+            margin-top: 14px;
+            padding: 10px 12px;
+            background: rgba(220, 38, 38, 0.08);
+            border: 1px solid rgba(220, 38, 38, 0.25);
+            border-radius: var(--radius-sm);
+            color: var(--color-error);
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+        .login-error.visible { display: block; }
+        .login-footer {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid var(--color-border-soft);
+            text-align: center;
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+        .login-footer a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .login-footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 480px) {
+            .login-card { padding: 28px 22px; }
+        }
+
         /* ===== Topbar ===== */
         .topbar {
             height: var(--topbar-h);
@@ -325,6 +461,44 @@
 </head>
 <body>
 
+    <!-- Overlay de login (visible solo si /center-auth/cameras devuelve 401).
+         Por debajo postea a /authelia/api/firstfactor; la cookie de sesión
+         queda seteada por Authelia y el dashboard puede consumir la API. -->
+    <div class="login-overlay" id="login-overlay" aria-hidden="true">
+        <form class="login-card" id="login-form" autocomplete="on">
+            <div class="login-brand">
+                <img src="images.png" alt="NQN Petrol">
+                <div>
+                    <div class="login-brand-title">Centro de Monitoreo</div>
+                    <div class="login-brand-sub">Streaming en vivo</div>
+                </div>
+            </div>
+
+            <h2 class="login-heading">Ingresar</h2>
+            <p class="login-subheading">Usá tu usuario y contraseña asignados.</p>
+
+            <div class="login-field">
+                <label for="login-username">Usuario</label>
+                <input type="text" id="login-username" name="username"
+                       autocomplete="username" autocapitalize="none"
+                       spellcheck="false" required>
+            </div>
+            <div class="login-field">
+                <label for="login-password">Contraseña</label>
+                <input type="password" id="login-password" name="password"
+                       autocomplete="current-password" required>
+            </div>
+
+            <button type="submit" class="login-btn" id="login-btn">Ingresar</button>
+            <div class="login-error" id="login-error" role="alert"></div>
+
+            <div class="login-footer">
+                ¿Necesitás activar segundo factor?
+                <a href="/authelia/" target="_self">Ir al portal</a>
+            </div>
+        </form>
+    </div>
+
     <header class="topbar">
         <div class="brand">
             <img src="images.png" alt="NQN Petrol">
@@ -350,14 +524,35 @@
         // ==================================================================
         // Autenticación
         // ==================================================================
-        // Authelia maneja login/sesión vía cookie HttpOnly. El dashboard no
-        // toca tokens: si la cookie es válida los fetches funcionan; si no,
-        // el servidor devuelve 401/302 y redirigimos al portal.
-        const API_CAMERAS = "/center-auth/cameras";
+        // Authelia maneja la sesión vía cookie HttpOnly. El login lo hace
+        // el overlay de esta misma página posteando a /authelia/api/firstfactor;
+        // si el user activó 2FA, redirigimos al portal solo en ese caso.
+        const API_CAMERAS    = "/center-auth/cameras";
+        const API_FIRSTFACTOR = "/authelia/api/firstfactor";
+        const PORTAL_AUTHELIA = "/authelia/";
 
-        function redirigirAlPortal() {
-            const rd = encodeURIComponent(window.location.href);
-            window.location.href = `/authelia/?rd=${rd}`;
+        function mostrarLogin(msg) {
+            cerrarTodo();
+            const overlay = document.getElementById("login-overlay");
+            const errEl   = document.getElementById("login-error");
+            overlay.classList.add("visible");
+            overlay.setAttribute("aria-hidden", "false");
+            document.body.classList.add("locked");
+            if (msg) {
+                errEl.textContent = msg;
+                errEl.classList.add("visible");
+            } else {
+                errEl.textContent = "";
+                errEl.classList.remove("visible");
+            }
+            setTimeout(() => document.getElementById("login-username").focus(), 50);
+        }
+        function ocultarLogin() {
+            const overlay = document.getElementById("login-overlay");
+            overlay.classList.remove("visible");
+            overlay.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("locked");
+            document.getElementById("login-error").classList.remove("visible");
         }
 
         // ==================================================================
@@ -395,9 +590,10 @@
         async function iniciarApp() {
             try {
                 const r = await fetch(API_CAMERAS, { credentials: "same-origin" });
-                if (r.status === 401) { redirigirAlPortal(); return; }
+                if (r.status === 401) { mostrarLogin(); return; }
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
                 const { sites } = await r.json();
+                ocultarLogin();
                 configurarCamaras(sites);
                 renderSelector();
                 renderGrid();
@@ -408,6 +604,83 @@
                     'Error de red al cargar las cámaras. Recargá la página.</div>';
             }
         }
+
+        // ==================================================================
+        // Form de login → /authelia/api/firstfactor
+        // ==================================================================
+        // Authelia expone una API que el portal nativo usa por debajo.
+        // Posteamos JSON con username/password, Authelia setea la cookie
+        // de sesión, y volvemos a llamar a /center-auth/cameras (esta vez
+        // con cookie válida) para renderizar el grid sin reload.
+        //
+        // Si el user tiene 2FA activado, Authelia devuelve un redirect que
+        // contiene /2fa/ → en ese caso redirigimos al portal nativo SOLO
+        // para esa parte (es una vez en la vida del usuario).
+        document.getElementById("login-form").addEventListener("submit", async (ev) => {
+            ev.preventDefault();
+            const userEl = document.getElementById("login-username");
+            const passEl = document.getElementById("login-password");
+            const btn    = document.getElementById("login-btn");
+            const errEl  = document.getElementById("login-error");
+
+            const username = userEl.value.trim();
+            const password = passEl.value;
+            if (!username || !password) {
+                errEl.textContent = "Ingresá usuario y contraseña.";
+                errEl.classList.add("visible");
+                return;
+            }
+
+            btn.disabled    = true;
+            btn.textContent = "Ingresando…";
+            errEl.classList.remove("visible");
+
+            try {
+                const r = await fetch(API_FIRSTFACTOR, {
+                    method:      "POST",
+                    credentials: "same-origin",
+                    headers:     { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        keepMeLoggedIn: false,
+                        targetURL:      window.location.href,
+                        requestMethod:  "GET",
+                    }),
+                });
+
+                let data = {};
+                try { data = await r.json(); } catch {}
+
+                if (!r.ok || data.status !== "OK") {
+                    const msg = (data && data.message) || "Credenciales incorrectas.";
+                    errEl.textContent = msg;
+                    errEl.classList.add("visible");
+                    passEl.value = "";
+                    passEl.focus();
+                    return;
+                }
+
+                // Si Authelia exige 2FA, manda al portal para esa parte.
+                const redirect = data.data && data.data.redirect;
+                if (redirect && /\/2fa(\/|$)/.test(redirect)) {
+                    window.location.href = redirect;
+                    return;
+                }
+
+                // Login OK y sin 2FA pendiente — cookie ya está seteada.
+                passEl.value = "";
+                ocultarLogin();
+                await iniciarApp();
+            } catch (err) {
+                console.warn("Error en login:", err);
+                errEl.textContent = "Error de red. Probá de nuevo.";
+                errEl.classList.add("visible");
+            } finally {
+                btn.disabled    = false;
+                btn.textContent = "Ingresar";
+            }
+        });
 
         document.getElementById("btn-logout").addEventListener("click", () => {
             cerrarTodo();
@@ -637,10 +910,10 @@
 
                 if (!esActual(path, generation)) return cleanup(pc);
 
-                // Sesión Authelia caducada — volver al portal
+                // Sesión Authelia caducada — pedir login otra vez
                 if (resp.status === 401) {
                     cleanup(pc);
-                    if (esActual(path, generation)) redirigirAlPortal();
+                    if (esActual(path, generation)) mostrarLogin("Sesión expirada. Ingresá de nuevo.");
                     return;
                 }
 

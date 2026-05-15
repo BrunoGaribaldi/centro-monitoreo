@@ -89,15 +89,12 @@ server {
         proxy_read_timeout 30;
     }
 
-    # ── 2) Dashboard estático (protegido con Authelia) ────────────────
+    # ── 2) Dashboard estático ─────────────────────────────────────────
+    # NO está protegido con auth_request: el HTML no tiene info sensible
+    # y necesitamos que cargue sin redirect para mostrar el overlay de
+    # login custom (con la estética del sistema). Los endpoints que SÍ
+    # tienen info sensible (/center-auth/*, /webrtc/*) siguen protegidos.
     location / {
-        auth_request /internal/authelia/authz;
-        error_page 401 = @to_authelia;
-
-        # Capturar headers que devuelve Authelia para tracking opcional
-        auth_request_set $remote_user   $upstream_http_remote_user;
-        auth_request_set $remote_groups $upstream_http_remote_groups;
-
         proxy_pass http://127.0.0.1:18082;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
