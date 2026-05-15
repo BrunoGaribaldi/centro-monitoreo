@@ -178,11 +178,15 @@ a un path no declarado es rechazado).
     su rol.
 11. El dashboard renderiza un grid con un `<video>` por cámara.
 12. Para cada `<video>`, el navegador hace un `POST` WebRTC al endpoint
-    `/webrtc/<path>/whep`. nginx hace **dos** validaciones:
-    - **#1**: ¿La cookie de Authelia es válida? (es decir: ¿está
-      logueado?)
+    `/webrtc/<path>/whep`. nginx hace un único `auth_request` al
+    endpoint combinado `/internal/webrtc/authz` (en el auth-service),
+    que internamente hace dos validaciones en serie:
+    - **#1**: ¿La cookie de Authelia es válida? (el auth-service llama
+      directamente a Authelia)
     - **#2**: ¿Este usuario puede ver *este path específico*? (consulta
-      al auth-service, que mira `allowed_paths` o el rol)
+      `companies.yml` con el username que devolvió Authelia)
+    nginx no puede encadenar dos `auth_request` por location; el
+    endpoint combinado resuelve eso.
 13. Si ambas pasan, nginx proxea el request a MediaMTX (en
     `127.0.0.1:8889`), que negocia WebRTC con el navegador.
 14. Tras la negociación, el video fluye **directo del puerto UDP 8189
@@ -254,15 +258,24 @@ Es un **microservicio Python** que expone dos endpoints HTTP:
 
 1. **`GET /center-auth/cameras`** — el dashboard lo llama al cargar.
    Devuelve la lista de sitios y cámaras que el usuario puede ver, en
-   formato JSON. Filtra según el rol del user (`companies.yml`).
+   formato JSON. Filtra según el rol del user (`companies.yml`). Recibe
+   el username vía el header `Remote-User` que nginx inyecta tras
+   validar la sesión contra Authelia.
 
-2. **`GET /center-auth/authz-path`** — nginx lo llama internamente en
-   cada request a `/webrtc/<path>/whep`. Devuelve 200 si el usuario
-   puede ver ese path, 403 si no.
+2. **`GET /center-auth/webrtc-authz`** — nginx lo llama internamente
+   (como `auth_request`) en cada request a `/webrtc/<path>/whep`.
+   Combina dos validaciones en un solo subrequest:
+   - Llama directamente a Authelia para verificar la cookie de sesión y
+     obtener el username.
+   - Consulta `companies.yml` para chequear si ese usuario tiene
+     permitido el path solicitado.
+   Devuelve 200 (con header `Remote-User`) si todo pasa, o el código
+   de error correspondiente (401/403/503). Emite logs a stdout para
+   trazabilidad (`docker logs auth_service`).
 
-Ambos endpoints reciben el username vía el header `Remote-User` que
-nginx inyecta tras validar la sesión contra Authelia. **El auth-service
-no valida sesiones; confía en lo que nginx le pasa.**
+   > **Por qué un solo endpoint y no dos `auth_request`:** nginx no
+   > admite más de una directiva `auth_request` por `location`. El
+   > endpoint combinado resuelve eso llamando a Authelia desde Python.
 
 ### 4.4 Authelia
 
@@ -303,8 +316,10 @@ Funciones:
 - Termina TLS con cert de Let's Encrypt (renovación automática cada 60
   días, gestionada por un timer systemd).
 - Hace `auth_request` a Authelia en cada request al dashboard.
-- Hace **doble** `auth_request` (Authelia + auth-service) en cada
-  request a `/webrtc/*`.
+- Hace un único `auth_request` al endpoint combinado del auth-service
+  en cada request a `/webrtc/*` (ese endpoint llama a Authelia
+  internamente y luego valida el path — nginx no puede encadenar dos
+  `auth_request` en un mismo `location`).
 - Inyecta los headers `Remote-User`, `Remote-Groups`, `Remote-Name`,
   `Remote-Email` antes de pasar requests a los upstreams.
 - Reescribe el header `Location` que devuelve MediaMTX (necesario para
@@ -427,7 +442,7 @@ Cuando se sume una empresa nueva (ej. ACME):
 ├── auth-service/               # Microservicio Python de autorización
 │   ├── Dockerfile              # Cómo construir la imagen
 │   ├── requirements.txt        # Dependencias Python
-│   └── main.py                 # Endpoints /cameras y /authz-path
+│   └── main.py                 # Endpoints /cameras y /webrtc-authz
 │
 └── authelia/                   # Configuración de Authelia
     ├── configuration.yml       # Reglas de access_control, sesiones, TOTP
