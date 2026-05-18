@@ -40,6 +40,11 @@
 
         * { box-sizing: border-box; }
 
+        /* El atributo HTML `hidden` debería ocultar un elemento, pero los
+           selectores con `display: flex/grid` lo pisan por especificidad.
+           Esta regla restaura el comportamiento estándar de HTML5. */
+        [hidden] { display: none !important; }
+
         html, body {
             margin: 0;
             padding: 0;
@@ -1025,7 +1030,7 @@
             <!-- Weather widget: visible solo si el user tiene alguna estación.
                  El JS lo rellena tras /center-auth/weather/stations. -->
             <div class="toolbar-group" id="weather-group" hidden>
-                <span class="toolbar-group-title">Clima</span>
+                <span class="toolbar-group-title">Clima · Estación Meteo. Tempest</span>
                 <button type="button" class="weather-widget loading" id="weather-widget" title="Ver detalle">
                     <span class="weather-icon">○</span>
                     <span class="weather-site">—</span>
