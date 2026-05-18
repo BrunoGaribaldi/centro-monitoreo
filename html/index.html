@@ -516,6 +516,186 @@
             cursor: not-allowed;
         }
 
+        /* ----- Weather widget ----- */
+        .weather-widget {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px 6px 10px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-left-width: 3px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            cursor: pointer;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            white-space: nowrap;
+            font-family: inherit;
+            color: var(--color-text);
+        }
+        .weather-widget:hover {
+            box-shadow: var(--shadow-sm);
+        }
+        .weather-widget.ok    { border-left-color: var(--color-live); }
+        .weather-widget.warn  { border-left-color: #f59e0b; }
+        .weather-widget.danger{ border-left-color: var(--color-error); }
+        .weather-widget.loading { color: var(--color-text-muted); border-left-color: var(--color-border); }
+        .weather-widget.error   { color: var(--color-error); border-left-color: var(--color-error); }
+        .weather-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+        .weather-widget.ok    .weather-icon { color: var(--color-live); }
+        .weather-widget.warn  .weather-icon { color: #f59e0b; }
+        .weather-widget.danger .weather-icon { color: var(--color-error); }
+        .weather-site {
+            font-weight: 600;
+            color: var(--color-text);
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .weather-metric {
+            color: var(--color-text-muted);
+            font-weight: 500;
+        }
+        .weather-metric strong {
+            color: var(--color-text);
+            font-weight: 600;
+        }
+        .weather-select {
+            margin-left: 4px;
+            padding: 4px 6px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background: var(--color-surface);
+            font-family: inherit;
+            font-size: 11px;
+            color: var(--color-text);
+            cursor: pointer;
+        }
+
+        /* ----- Modal expandible del weather ----- */
+        .weather-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+        .weather-modal-overlay.open { display: flex; }
+        .weather-modal {
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 480px;
+            max-height: 88vh;
+            overflow-y: auto;
+            padding: 24px 28px 22px;
+        }
+        .weather-modal h2 {
+            margin: 0 0 4px;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+        .weather-modal-sub {
+            color: var(--color-text-muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .weather-modal-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 12px 0 18px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .weather-modal-status.ok    { background: rgba(22, 163, 74, 0.12); color: var(--color-live); }
+        .weather-modal-status.warn  { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+        .weather-modal-status.danger{ background: rgba(220, 38, 38, 0.12); color: var(--color-error); }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .weather-card {
+            border: 1px solid var(--color-border-soft);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            background: var(--color-surface-alt);
+        }
+        .weather-card .label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 4px;
+        }
+        .weather-card .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        .weather-card .value small {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            margin-left: 4px;
+        }
+        .weather-card.warn  { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+        .weather-card.danger{ border-color: rgba(220, 38, 38, 0.4); background: rgba(220, 38, 38, 0.08); }
+
+        .weather-reasons {
+            margin: 0 0 18px;
+            padding: 10px 12px;
+            background: rgba(245, 158, 11, 0.08);
+            border-left: 3px solid #f59e0b;
+            border-radius: var(--radius-sm);
+            font-size: 12.5px;
+            color: var(--color-text);
+        }
+        .weather-reasons.danger {
+            background: rgba(220, 38, 38, 0.08);
+            border-left-color: var(--color-error);
+        }
+        .weather-reasons ul { margin: 4px 0 0; padding-left: 18px; }
+        .weather-reasons li { margin: 2px 0; }
+
+        .weather-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--color-border-soft);
+            padding-top: 14px;
+            font-size: 11.5px;
+            color: var(--color-text-muted);
+        }
+        .weather-modal-close {
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            padding: 7px 16px;
+            font-size: 12.5px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .weather-modal-close:hover { background: var(--color-primary-hover); }
+
         /* ----- Acciones (logout) ----- */
         .actions {
             display: flex;
@@ -842,6 +1022,18 @@
         </div>
 
         <div class="toolbar" id="toolbar">
+            <!-- Weather widget: visible solo si el user tiene alguna estación.
+                 El JS lo rellena tras /center-auth/weather/stations. -->
+            <div class="toolbar-group" id="weather-group" hidden>
+                <span class="toolbar-group-title">Clima</span>
+                <button type="button" class="weather-widget loading" id="weather-widget" title="Ver detalle">
+                    <span class="weather-icon">○</span>
+                    <span class="weather-site">—</span>
+                    <span class="weather-metric">Cargando…</span>
+                </button>
+                <select class="weather-select" id="weather-select" hidden></select>
+            </div>
+
             <!-- Filtros drill-down: el contenido depende del rol del user. -->
             <div class="toolbar-group" id="filters"></div>
 
@@ -1155,6 +1347,9 @@
                 configurarCamaras(data);
                 renderToolbar();
                 renderGrid();
+                // Cargar weather después del login (puede no haber estaciones
+                // visibles → el widget queda oculto silenciosamente).
+                if (typeof cargarWeatherStations === "function") cargarWeatherStations();
             } catch (err) {
                 console.warn("No se pudo cargar /center-auth/cameras:", err);
                 document.getElementById("grid").innerHTML =
@@ -1248,6 +1443,9 @@
 
         document.getElementById("btn-logout").addEventListener("click", async () => {
             cerrarTodo();
+            // Limpiar estado de weather (polling, cache, widget) si el
+            // módulo está cargado.
+            if (typeof limpiarWeatherDelUsuario === "function") limpiarWeatherDelUsuario();
             // Llama al endpoint de logout de Authelia para que limpie la cookie,
             // pero sin navegar: el usuario se queda en el dashboard y ve el overlay.
             try { await fetch("/authelia/logout", { credentials: "same-origin" }); } catch {}
@@ -1907,9 +2105,366 @@
         // ==================================================================
         // Boot
         // ==================================================================
+        // ==================================================================
+        // Módulo de meteorología (WeatherFlow Tempest)
+        // ==================================================================
+        // El widget de la topbar muestra el clima del site filtrado (o de la
+        // única estación que el user tenga si solo hay 1). Click → modal con
+        // detalle completo. Polling cada 30s contra /center-auth/weather/<id>.
+        const WEATHER_POLL_MS = 30_000;
+        const WEATHER_DEFAULT_LIMITS = {
+            wind_avg_warn:       10,    // m/s
+            wind_avg_danger:     12,
+            wind_gust_warn:      15,
+            wind_gust_danger:    17,
+            lightning_warn_km:   30,
+            lightning_danger_km: 10,
+        };
+
+        const stationsDisponibles = [];   // [{station_id, display, site, ...}]
+        let   weatherStationActiva = null;
+        let   weatherPollTimer = null;
+        let   weatherUltimoFetch = null;  // {station, observation, semaforo, motivos, ts}
+
+        async function cargarWeatherStations() {
+            stationsDisponibles.length = 0;
+            try {
+                const r = await fetch("/center-auth/weather/stations", { credentials: "same-origin" });
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const data = await r.json();
+                stationsDisponibles.push(...(data.stations || []));
+            } catch (err) {
+                console.warn("weather: no se pudieron cargar estaciones", err);
+            }
+            renderWeatherWidget();
+        }
+
+        function elegirStationAuto() {
+            if (stationsDisponibles.length === 0) return null;
+            // Si el user filtró por un sitio específico, priorizar la estación
+            // de ese sitio. Si no, usar la primera disponible (o la activa
+            // anterior si sigue en la lista).
+            const sitesFiltrados = [...filtros.sites];
+            if (sitesFiltrados.length === 1) {
+                const enSite = stationsDisponibles.find(s => s.site === sitesFiltrados[0]);
+                if (enSite) return enSite;
+            }
+            if (weatherStationActiva) {
+                const sigueAhi = stationsDisponibles.find(s => s.station_id === weatherStationActiva.station_id);
+                if (sigueAhi) return sigueAhi;
+            }
+            return stationsDisponibles[0];
+        }
+
+        function renderWeatherWidget() {
+            const group  = document.getElementById("weather-group");
+            const select = document.getElementById("weather-select");
+
+            // Sin estaciones visibles → ocultar todo el grupo.
+            if (stationsDisponibles.length === 0) {
+                group.hidden = true;
+                weatherStationActiva = null;
+                detenerPollingWeather();
+                return;
+            }
+            group.hidden = false;
+
+            // Selector solo si hay más de una estación visible.
+            if (stationsDisponibles.length > 1) {
+                select.hidden = false;
+                select.innerHTML = "";
+                for (const st of stationsDisponibles) {
+                    const opt = document.createElement("option");
+                    opt.value = String(st.station_id);
+                    opt.textContent = `${st.display} · ${st.site_display}`;
+                    select.appendChild(opt);
+                }
+            } else {
+                select.hidden = true;
+            }
+
+            const elegida = elegirStationAuto();
+            if (!elegida) return;
+
+            const cambioStation = !weatherStationActiva ||
+                                  weatherStationActiva.station_id !== elegida.station_id;
+            weatherStationActiva = elegida;
+            if (select && !select.hidden) select.value = String(elegida.station_id);
+
+            if (cambioStation) {
+                pintarWidgetLoading();
+                weatherUltimoFetch = null;
+                refrescarWeather();             // arranca polling
+            }
+        }
+
+        function pintarWidgetLoading() {
+            const w = document.getElementById("weather-widget");
+            w.className = "weather-widget loading";
+            w.querySelector(".weather-icon").textContent = "○";
+            w.querySelector(".weather-site").textContent = weatherStationActiva
+                ? weatherStationActiva.site_display
+                : "—";
+            w.querySelector(".weather-metric").textContent = "Cargando…";
+        }
+
+        function pintarWidget(data) {
+            const w = document.getElementById("weather-widget");
+            const sem = data.semaforo;
+            w.className = "weather-widget " + sem;
+
+            const icono = sem === "danger" ? "⚠" : sem === "warn" ? "!" : "✓";
+            w.querySelector(".weather-icon").textContent = icono;
+            w.querySelector(".weather-site").textContent = data.station.site_display;
+
+            const obs = data.observation;
+            const viento = obs.wind_avg != null ? `${obs.wind_avg.toFixed(1)} m/s` : "— m/s";
+            const rafaga = obs.wind_gust != null ? ` · ráfaga ${obs.wind_gust.toFixed(1)}` : "";
+            w.querySelector(".weather-metric").innerHTML =
+                `<strong>${viento}</strong>${rafaga}`;
+            w.title = `Click para ver detalle · ${data.station.display}`;
+        }
+
+        function pintarWidgetError(msg) {
+            const w = document.getElementById("weather-widget");
+            w.className = "weather-widget error";
+            w.querySelector(".weather-icon").textContent = "✕";
+            w.querySelector(".weather-site").textContent = weatherStationActiva
+                ? weatherStationActiva.site_display
+                : "Clima";
+            w.querySelector(".weather-metric").textContent = msg || "Sin datos";
+        }
+
+        function calcularSemaforo(obs, limits) {
+            const L = { ...WEATHER_DEFAULT_LIMITS, ...(limits || {}) };
+            const motivos = [];
+            let nivel = "ok";
+            function escalar(a, b) {
+                const orden = { ok: 0, warn: 1, danger: 2 };
+                return orden[a] >= orden[b] ? a : b;
+            }
+
+            const wa = obs.wind_avg, wg = obs.wind_gust, pr = obs.precip_accum_last_1hr;
+            const ldist = obs.lightning_strike_last_distance;
+            const lcount = obs.lightning_strike_count_last_3hr;
+
+            if (wa != null && wa > L.wind_avg_danger) {
+                nivel = escalar(nivel, "danger");
+                motivos.push(`Viento promedio ${wa.toFixed(1)} m/s supera el límite (${L.wind_avg_danger})`);
+            } else if (wa != null && wa > L.wind_avg_warn) {
+                nivel = escalar(nivel, "warn");
+                motivos.push(`Viento promedio ${wa.toFixed(1)} m/s cerca del límite (${L.wind_avg_warn})`);
+            }
+            if (wg != null && wg > L.wind_gust_danger) {
+                nivel = escalar(nivel, "danger");
+                motivos.push(`Ráfaga ${wg.toFixed(1)} m/s supera el límite (${L.wind_gust_danger})`);
+            } else if (wg != null && wg > L.wind_gust_warn) {
+                nivel = escalar(nivel, "warn");
+                motivos.push(`Ráfaga ${wg.toFixed(1)} m/s cerca del límite (${L.wind_gust_warn})`);
+            }
+            if (lcount != null && lcount > 0 && ldist != null) {
+                if (ldist < L.lightning_danger_km) {
+                    nivel = escalar(nivel, "danger");
+                    motivos.push(`Rayos cercanos: último a ${ldist} km`);
+                } else if (ldist < L.lightning_warn_km) {
+                    nivel = escalar(nivel, "warn");
+                    motivos.push(`Rayos en la zona: último a ${ldist} km`);
+                }
+            }
+            if (pr != null && pr > 0) {
+                nivel = escalar(nivel, "warn");
+                motivos.push(`Precipitación última hora: ${pr.toFixed(1)} mm`);
+            }
+            return { nivel, motivos };
+        }
+
+        async function refrescarWeather() {
+            detenerPollingWeather();
+            if (!weatherStationActiva) return;
+            const idActual = weatherStationActiva.station_id;
+            try {
+                const r = await fetch(`/center-auth/weather/${idActual}`, { credentials: "same-origin" });
+                if (r.status === 401) { mostrarLogin("Sesión expirada."); return; }
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const payload = await r.json();
+                // Si el usuario cambió la estación mientras estábamos consultando, ignorar.
+                if (!weatherStationActiva || weatherStationActiva.station_id !== idActual) return;
+                const { nivel, motivos } = calcularSemaforo(payload.observation, payload.station.limits);
+                weatherUltimoFetch = { ...payload, semaforo: nivel, motivos, ts: Date.now() };
+                pintarWidget(weatherUltimoFetch);
+            } catch (err) {
+                console.warn("weather: fallo refrescando", err);
+                pintarWidgetError("Sin datos");
+            } finally {
+                if (weatherStationActiva && weatherStationActiva.station_id === idActual) {
+                    weatherPollTimer = setTimeout(refrescarWeather, WEATHER_POLL_MS);
+                }
+            }
+        }
+
+        function detenerPollingWeather() {
+            if (weatherPollTimer) { clearTimeout(weatherPollTimer); weatherPollTimer = null; }
+        }
+
+        function limpiarWeatherDelUsuario() {
+            detenerPollingWeather();
+            stationsDisponibles.length = 0;
+            weatherStationActiva = null;
+            weatherUltimoFetch = null;
+            const group = document.getElementById("weather-group");
+            if (group) group.hidden = true;
+            const sel = document.getElementById("weather-select");
+            if (sel) { sel.innerHTML = ""; sel.hidden = true; }
+        }
+
+        // Cambio manual de estación desde el <select>.
+        document.getElementById("weather-select").addEventListener("change", (ev) => {
+            const id = parseInt(ev.target.value, 10);
+            const nueva = stationsDisponibles.find(s => s.station_id === id);
+            if (!nueva) return;
+            weatherStationActiva = nueva;
+            weatherUltimoFetch = null;
+            pintarWidgetLoading();
+            refrescarWeather();
+        });
+
+        // Click en el widget → abrir modal con detalle.
+        document.getElementById("weather-widget").addEventListener("click", () => abrirModalWeather());
+
+        function abrirModalWeather() {
+            if (!weatherStationActiva) return;
+            renderModalWeather();
+            const ov = document.getElementById("weather-modal-overlay");
+            ov.classList.add("open");
+            ov.setAttribute("aria-hidden", "false");
+        }
+        function cerrarModalWeather() {
+            const ov = document.getElementById("weather-modal-overlay");
+            ov.classList.remove("open");
+            ov.setAttribute("aria-hidden", "true");
+        }
+        document.getElementById("weather-modal-overlay").addEventListener("click", (ev) => {
+            if (ev.target === ev.currentTarget) cerrarModalWeather();
+        });
+        document.addEventListener("keydown", (ev) => {
+            if (ev.key === "Escape") {
+                const ov = document.getElementById("weather-modal-overlay");
+                if (ov.classList.contains("open")) cerrarModalWeather();
+            }
+        });
+
+        function renderModalWeather() {
+            const cont = document.getElementById("weather-modal");
+            const data = weatherUltimoFetch;
+            if (!data) {
+                cont.innerHTML = `<h2>${weatherStationActiva.display}</h2>
+                                  <p class="weather-modal-sub">Cargando datos…</p>
+                                  <div class="weather-modal-footer">
+                                    <span>—</span>
+                                    <button class="weather-modal-close" data-action="close">Cerrar</button>
+                                  </div>`;
+            } else {
+                const obs = data.observation;
+                const fmt = (v, unit, dec = 1) => v == null ? "—" : `${Number(v).toFixed(dec)}<small>${unit}</small>`;
+                const nivelLabel = data.semaforo === "ok"    ? "OK para volar"
+                                 : data.semaforo === "warn"  ? "Precaución"
+                                 : "No volar";
+                const ageSec = obs.station_observed_at ? (Math.floor(Date.now()/1000) - obs.station_observed_at) : null;
+                const ageTxt = ageSec == null ? "—"
+                             : ageSec < 60 ? `hace ${ageSec}s`
+                             : ageSec < 3600 ? `hace ${Math.floor(ageSec/60)}m`
+                             : `hace ${Math.floor(ageSec/3600)}h`;
+                cont.innerHTML = `
+                    <h2>${data.station.display}</h2>
+                    <div class="weather-modal-sub">${data.station.empresa} · ${data.station.site_display}</div>
+                    <span class="weather-modal-status ${data.semaforo}">${nivelLabel}</span>
+
+                    <div class="weather-grid">
+                        <div class="weather-card ${cardClass(data, 'wind_avg')}">
+                            <div class="label">Viento promedio</div>
+                            <div class="value">${fmt(obs.wind_avg, " m/s")}</div>
+                        </div>
+                        <div class="weather-card ${cardClass(data, 'wind_gust')}">
+                            <div class="label">Ráfaga máxima</div>
+                            <div class="value">${fmt(obs.wind_gust, " m/s")}</div>
+                        </div>
+                        <div class="weather-card">
+                            <div class="label">Dirección</div>
+                            <div class="value">${obs.wind_direction != null ? Math.round(obs.wind_direction) + "<small>°</small>" : "—"}</div>
+                        </div>
+                        <div class="weather-card ${cardClass(data, 'precip')}">
+                            <div class="label">Lluvia última hora</div>
+                            <div class="value">${fmt(obs.precip_accum_last_1hr, " mm", 2)}</div>
+                        </div>
+                        <div class="weather-card">
+                            <div class="label">Temperatura</div>
+                            <div class="value">${fmt(obs.air_temperature, " °C")}</div>
+                        </div>
+                        <div class="weather-card">
+                            <div class="label">Humedad</div>
+                            <div class="value">${fmt(obs.relative_humidity, " %", 0)}</div>
+                        </div>
+                        <div class="weather-card ${cardClass(data, 'lightning')}">
+                            <div class="label">Rayos (3h)</div>
+                            <div class="value">${obs.lightning_strike_count_last_3hr ?? 0}${obs.lightning_strike_last_distance != null ? `<small>· últ. ${obs.lightning_strike_last_distance} km</small>` : ""}</div>
+                        </div>
+                        <div class="weather-card">
+                            <div class="label">UV / Solar</div>
+                            <div class="value">${obs.uv != null ? Math.round(obs.uv) : "—"}<small>${obs.solar_radiation != null ? " · " + Math.round(obs.solar_radiation) + " W/m²" : ""}</small></div>
+                        </div>
+                    </div>
+
+                    ${data.motivos.length > 0 ? `
+                        <div class="weather-reasons ${data.semaforo}">
+                            <strong>Motivos:</strong>
+                            <ul>${data.motivos.map(m => `<li>${m}</li>`).join("")}</ul>
+                        </div>` : ""}
+
+                    <div class="weather-modal-footer">
+                        <span>Última medición: ${ageTxt}</span>
+                        <button class="weather-modal-close" data-action="close">Cerrar</button>
+                    </div>
+                `;
+            }
+            cont.querySelector('[data-action="close"]').addEventListener("click", cerrarModalWeather);
+        }
+
+        function cardClass(data, key) {
+            // Resalta cards que están contribuyendo al estado warn/danger.
+            const obs = data.observation;
+            const L = { ...WEATHER_DEFAULT_LIMITS, ...(data.station.limits || {}) };
+            if (key === "wind_avg" && obs.wind_avg != null) {
+                if (obs.wind_avg > L.wind_avg_danger) return "danger";
+                if (obs.wind_avg > L.wind_avg_warn)   return "warn";
+            }
+            if (key === "wind_gust" && obs.wind_gust != null) {
+                if (obs.wind_gust > L.wind_gust_danger) return "danger";
+                if (obs.wind_gust > L.wind_gust_warn)   return "warn";
+            }
+            if (key === "lightning" && obs.lightning_strike_count_last_3hr > 0 && obs.lightning_strike_last_distance != null) {
+                if (obs.lightning_strike_last_distance < L.lightning_danger_km) return "danger";
+                if (obs.lightning_strike_last_distance < L.lightning_warn_km)   return "warn";
+            }
+            if (key === "precip" && obs.precip_accum_last_1hr > 0) return "warn";
+            return "";
+        }
+
+        // Cuando cambia el filtro de sitios, reevaluar qué estación mostrar.
+        // Wrappemos aplicarFiltros para no tocarla directamente.
+        const _aplicarFiltrosOriginal = aplicarFiltros;
+        aplicarFiltros = function() {
+            _aplicarFiltrosOriginal();
+            renderWeatherWidget();
+        };
+
         iniciarApp();
 
-        window.addEventListener("beforeunload", cerrarTodo);
+        window.addEventListener("beforeunload", () => { cerrarTodo(); detenerPollingWeather(); });
     </script>
+
+    <!-- Modal de detalle del weather (renderizado dinámicamente por el JS) -->
+    <div class="weather-modal-overlay" id="weather-modal-overlay" aria-hidden="true">
+        <div class="weather-modal" id="weather-modal" role="dialog" aria-modal="true"></div>
+    </div>
 </body>
 </html>

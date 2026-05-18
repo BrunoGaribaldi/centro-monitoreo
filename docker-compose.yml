@@ -43,6 +43,10 @@ services:
     build: ./auth-service
     container_name: auth_service
     restart: unless-stopped
+    environment:
+      # Token de WeatherFlow Tempest para consultar estaciones meteo.
+      # El auth-service hace de proxy para no exponer el token al browser.
+      WEATHERFLOW_TOKEN: ${WEATHERFLOW_TOKEN}
     volumes:
       - ./companies.yml:/app/companies.yml:ro
     ports:
