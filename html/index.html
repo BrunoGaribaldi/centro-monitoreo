@@ -833,11 +833,11 @@
 
     <header class="topbar">
         <div class="brand">
-            <img src="images.png" alt="NQN Petrol">
+            <img id="brand-logo" src="images.png" alt="NQN Petrol">
             <div class="brand-divider"></div>
             <div class="brand-title-wrap">
                 <div class="brand-title">Centro de Monitoreo</div>
-                <div class="brand-subtitle">Streaming en vivo</div>
+                <div class="brand-subtitle" id="brand-subtitle">Streaming en vivo</div>
             </div>
         </div>
 
@@ -968,6 +968,30 @@
         const RETRY_MS       = 4000;
         const ICE_TIMEOUT_MS = 4000;
 
+        // ---- Logos por empresa ----
+        // El login muestra siempre el logo de NQN Petrol (no conocemos la
+        // empresa hasta después del login). El dashboard cambia el logo del
+        // topbar según la empresa del user logueado.
+        const LOGO_DEFAULT = "images.png";       // NQN Petrol (superadmin / fallback)
+        const LOGOS_EMPRESA = {
+            QUINTANA: "Qnt_Logo.png",
+            SEI:      "sei.png",
+        };
+
+        function aplicarLogoEmpresa(rol, empresaId) {
+            const img = document.getElementById("brand-logo");
+            if (!img) return;
+            // Superadmin (sin empresa) o empresa desconocida → logo default.
+            const archivo = (rol === "superadmin" || !empresaId)
+                ? LOGO_DEFAULT
+                : (LOGOS_EMPRESA[empresaId] || LOGO_DEFAULT);
+            const empresaDisplay = empresaId && JERARQUIA[empresaId]
+                ? JERARQUIA[empresaId].display
+                : "NQN Petrol";
+            img.src = archivo;
+            img.alt = empresaDisplay;
+        }
+
         // ---- Estado de UI (filtros + tamaño de grid + página + fit mode) ----
         const STORAGE_FILTROS = "centro-monitoreo:filtros";
         const STORAGE_SIZE    = "centro-monitoreo:gridSize";
@@ -1020,6 +1044,7 @@
             }
 
             cargarPreferenciasUI();
+            aplicarLogoEmpresa(ROL_USER, EMPRESA_USER);
         }
 
         // En mobile (<= 720px) los tamaños 16 y 25 están ocultos en el CSS.
@@ -1222,6 +1247,8 @@
             // Llama al endpoint de logout de Authelia para que limpie la cookie,
             // pero sin navegar: el usuario se queda en el dashboard y ve el overlay.
             try { await fetch("/authelia/logout", { credentials: "same-origin" }); } catch {}
+            // Volver al logo NQN por si después se loguea otro usuario.
+            aplicarLogoEmpresa(null, null);
             mostrarLogin();
         });
 

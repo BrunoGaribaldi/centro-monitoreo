@@ -72,6 +72,7 @@ access_control:
       resources: ['^/webrtc/.*']
       subject:
         - 'group:superadmins'
+        - 'group:sei_admins'
         - 'group:quintana-admins'
         - 'group:quintana-ca'
         - 'group:quintana-operadores'

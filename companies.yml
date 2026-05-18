@@ -33,6 +33,15 @@ companies:
             titulo: "efo · angular"
           - path: dock-efo
             titulo: "efo · dock"
+            
+  SEI: 
+    display: "Grupo SEI Sacatuc S.R.L."
+    sites:
+      prueba1:
+        display: "no conozco los sites de sei"
+        cameras:
+          - path: path-prueba1
+            titulo: "prueba1 sei"
 
 # =====================================================================
 # Usuarios
@@ -53,6 +62,11 @@ users:
   # Superadmin (dueño del centro de monitoreo) — sin empresa, ve todo
   - username: ingenieria
     rol: superadmin
+
+  #Admin completo de SEI
+  - username: admin_sei
+    empresa: SEI
+    rol: admin_empresa
 
   # Admin completo de QUINTANA — ve todo lo de la empresa
   - username: admin_quintana
