@@ -977,6 +977,9 @@
             QUINTANA: "Qnt_Logo.png",
             SEI:      "sei.png",
         };
+        const LOGO_ALTURA = {
+            SEI: "52px",
+        };
 
         function aplicarLogoEmpresa(rol, empresaId) {
             const img = document.getElementById("brand-logo");
@@ -990,6 +993,7 @@
                 : "NQN Petrol";
             img.src = archivo;
             img.alt = empresaDisplay;
+            img.style.height = (empresaId && LOGO_ALTURA[empresaId]) || "";
         }
 
         // ---- Estado de UI (filtros + tamaño de grid + página + fit mode) ----
