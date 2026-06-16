@@ -52,6 +52,14 @@ server {
         proxy_pass_request_body off;
         proxy_set_header Content-Length        "";
 
+        # Sin esta línea, Authelia detecta Accept:*/* como "request de browser"
+        # y devuelve 302 cuando la sesión no es válida. nginx convierte cualquier
+        # 3xx del auth_request en 500, que el frontend no puede distinguir de un
+        # error de red. Con Accept:application/json Authelia devuelve 401, que
+        # nginx maneja correctamente con el error_page y el frontend muestra el
+        # overlay de login.
+        proxy_set_header Accept               "application/json";
+
         # Authelia necesita la URL original para evaluar las reglas de
         # access_control (que matchean por domain/resources).
         proxy_set_header X-Original-Method     $request_method;

@@ -1345,8 +1345,11 @@
         async function iniciarApp() {
             try {
                 const r = await fetch(API_CAMERAS, { credentials: "same-origin" });
-                if (r.status === 401) { mostrarLogin(); return; }
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                // 401: sesión inválida/expirada. 403: usuario no tiene acceso.
+                // Cualquier 4xx/5xx inesperado (ej. nginx devuelve 500 cuando
+                // Authelia retorna 302 por sesión expirada) también va al login,
+                // ya que la causa es siempre la sesión.
+                if (!r.ok) { mostrarLogin(); return; }
                 const data = await r.json();
                 ocultarLogin();
                 configurarCamaras(data);
@@ -1357,9 +1360,7 @@
                 if (typeof cargarWeatherStations === "function") cargarWeatherStations();
             } catch (err) {
                 console.warn("No se pudo cargar /center-auth/cameras:", err);
-                document.getElementById("grid").innerHTML =
-                    '<div style="padding:40px;font-family:sans-serif;color:#dc2626">' +
-                    'Error de red al cargar las cámaras. Recargá la página.</div>';
+                mostrarLogin();
             }
         }
 

@@ -25,25 +25,18 @@ companies:
             titulo: "Dock 1"
       canadon-leon:
         display: "Cañadón Leon"
-        cameras: 
+        cameras:
           - path: dron-CL
             titulo: "CL · angular"
           - path: dock-CL
-            titulo: "CL · dock" 
-      efo:
-        display: "EFO"
-        cameras:
-          - path: dron-efo-angular
-            titulo: "efo · angular"
-          - path: dock-efo
-            titulo: "efo · dock"
+            titulo: "CL · dock"
         # Estaciones meteorológicas WeatherFlow Tempest del sitio.
         # Si el sitio tiene varias estaciones, agregar más items.
         # Si no tiene ninguna, omitir la key `weather_stations`.
         # Los `limits` son opcionales: si no se ponen, se usan defaults globales.
         weather_stations:
           - station_id: 217302
-            display: "Tempest EFO"
+            display: "Tempest CL"
             # limits:
             #   wind_avg_warn: 10
             #   wind_avg_danger: 12
@@ -51,6 +44,13 @@ companies:
             #   wind_gust_danger: 17
             #   lightning_warn_km: 30
             #   lightning_danger_km: 10
+      efo:
+        display: "EFO"
+        cameras:
+          - path: dron-efo-angular
+            titulo: "efo · angular"
+          - path: dock-efo
+            titulo: "efo · dock"
 
 
   SEI: 
