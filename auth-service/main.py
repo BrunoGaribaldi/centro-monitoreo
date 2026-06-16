@@ -256,6 +256,11 @@ def normalizar_obs_station(payload: dict) -> dict:
     """
     obs_list = payload.get("obs") or []
     obs = obs_list[0] if obs_list else {}
+    wind_direction = obs.get("wind_direction")
+    if wind_direction is not None:
+        # La veleta física quedó instalada al revés (180° invertida) en el
+        # sitio, así que se corrige acá antes de exponerla al frontend.
+        wind_direction = (wind_direction + 180) % 360
     return {
         "fetched_at":            int(time.time()),
         "station_observed_at":   obs.get("timestamp"),
@@ -265,7 +270,7 @@ def normalizar_obs_station(payload: dict) -> dict:
         "wind_avg":              obs.get("wind_avg"),
         "wind_gust":             obs.get("wind_gust"),
         "wind_lull":             obs.get("wind_lull"),
-        "wind_direction":        obs.get("wind_direction"),
+        "wind_direction":        wind_direction,
         "precip_accum_last_1hr": obs.get("precip_accum_last_1hr"),
         "uv":                    obs.get("uv"),
         "brightness":            obs.get("brightness"),
