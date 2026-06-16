@@ -1016,6 +1016,11 @@
         </form>
     </div>
 
+    <!-- Modal de detalle del weather (renderizado dinámicamente por el JS) -->
+    <div class="weather-modal-overlay" id="weather-modal-overlay" aria-hidden="true">
+        <div class="weather-modal" id="weather-modal" role="dialog" aria-modal="true"></div>
+    </div>
+
     <header class="topbar">
         <div class="brand">
             <img id="brand-logo" src="images.png" alt="NQN Petrol">
@@ -2467,10 +2472,5 @@
 
         window.addEventListener("beforeunload", () => { cerrarTodo(); detenerPollingWeather(); });
     </script>
-
-    <!-- Modal de detalle del weather (renderizado dinámicamente por el JS) -->
-    <div class="weather-modal-overlay" id="weather-modal-overlay" aria-hidden="true">
-        <div class="weather-modal" id="weather-modal" role="dialog" aria-modal="true"></div>
-    </div>
 </body>
 </html>
