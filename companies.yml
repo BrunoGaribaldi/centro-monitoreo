@@ -17,10 +17,6 @@ companies:
         cameras:
           - path: dron-cam-q1-angular
             titulo: "Q1 · Angular"
-          - path: dron-cam-q1-infrarojo
-            titulo: "Q1 · Infrarrojo"
-          - path: dron-cam-q1-zoom
-            titulo: "Q1 · Zoom"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
       canadon-leon:

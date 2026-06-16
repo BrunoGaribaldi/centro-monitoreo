@@ -81,12 +81,6 @@ paths:
   dron-cam-q1-angular:
     source: publisher
     record: false
-  dron-cam-q1-infrarojo:
-    source: publisher
-    record: false
-  dron-cam-q1-zoom:
-    source: publisher
-    record: false
   dron-efo-angular:
     source: rtsp://stream2.flytbase.com:8554/68c45a73a7ed35b3288f831a_99_0_0?id=6a07499f5526a80ed23871ce
     record: false
