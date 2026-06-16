@@ -23,9 +23,13 @@ companies:
             titulo: "Q1 · Zoom"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
-      canadon-seco:
-        display: "Cañadón Seco"
-        cameras: []
+      canadon-leon:
+        display: "Cañadón Leon"
+        cameras: 
+          - path: dron-CL
+            titulo: "CL · angular"
+          - path: dock-CL
+            titulo: "CL · dock" 
       efo:
         display: "EFO"
         cameras:

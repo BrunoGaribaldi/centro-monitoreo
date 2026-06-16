@@ -93,5 +93,13 @@ paths:
   dock-efo:
     source: rtsp://stream2.flytbase.com:8554/68c45a73a7ed35b3288f8317_165_0_7?id=6a0749605526a80ed238706a
     record: false
+  dock-CL:
+    source: publisher
+    record: false
+  dron-CL:
+    source: publisher
+    record: false
+
+
 
 
