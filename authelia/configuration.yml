@@ -91,8 +91,8 @@ session:
 
   cookies:
     - domain: 'panel.dronefieldoperation.cloud'
-      authelia_url: 'https://panel.dronefieldoperation.cloud/authelia/'
-      default_redirection_url: 'https://panel.dronefieldoperation.cloud/'
+      authelia_url: 'https://panel.dronefieldoperation.cloud:444/authelia/'
+      default_redirection_url: 'https://panel.dronefieldoperation.cloud:444/'
       name: 'authelia_session'
       same_site: 'lax'
 

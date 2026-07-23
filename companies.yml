@@ -15,15 +15,19 @@ companies:
       canadon-amarillo:
         display: "Cañadón Amarillo"
         cameras:
-          - path: dron-cam-q1-angular
-            titulo: "Q1 · Angular"
+          - path: dron-CAm-Q1-angular
+            titulo: "CAm-Q1 · Gran angular"
+          - path: dron-CAm-Q1-infrarojo
+            titulo: "CAm-Q1 · Térmica (IR)"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
       canadon-leon:
         display: "Cañadón Leon"
         cameras:
-          - path: dron-CL
-            titulo: "CL · angular"
+          - path: dron-CL-Q1-angular
+            titulo: "CL-Q1 · Gran angular"
+          - path: dron-CL-Q1-infrarojo
+            titulo: "CL-Q1 · Térmica (IR)"
           - path: dock-CL
             titulo: "CL · dock"
         # Estaciones meteorológicas WeatherFlow Tempest del sitio.
@@ -47,6 +51,8 @@ companies:
             titulo: "efo · angular"
           - path: dock-efo
             titulo: "efo · dock"
+          - path: dron-efo-angular-ia
+            titulo: "efo · angular (IA)"
 
 
   SEI: 
@@ -100,4 +106,4 @@ users:
     empresa: QUINTANA
     rol: viewer_drone
     allowed_paths:
-      - dron-cam-q1-angular
+      - dron-CAm-Q1-angular

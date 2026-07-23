@@ -1,61 +1,32 @@
+# ============================================================================
+# docker-compose.yml — CENTRO DE MONITOREO · NQN Petrol (iaserver)
+# ============================================================================
+# Recorte del stack original: SIN mediamtx (usa el bus /home/pasante/media) y
+# SIN nginx propio (lo publica el edge /home/pasante/nginx via conf.d/panel.conf).
+# Los 3 servicios corren en proxy-net SIN exponer puertos al host: el edge los
+# alcanza por nombre (dashboard:80, auth_service:19100, authelia:9091).
+# ============================================================================
 services:
-  # 1. Servidor de Video (MediaMTX)
-  mediamtx:
-    image: bluenviron/mediamtx:latest
-    container_name: mediamtx_drones
-    restart: unless-stopped
-    environment:
-      # Estas variables las lee el yaml vía ${...}
-      MEDIAMTX_PUBLISH_PASS: ${MEDIAMTX_PUBLISH_PASS}
-    volumes:
-      - ./mediamtx.yml:/mediamtx.yml:ro
-    ports:
-      # RTMP de ingesta: PÚBLICO (FlightHub 2 publica desde internet).
-      # La autenticación la hace MediaMTX (publishUser/publishPass).
-      - "1935:1935/tcp"
-      # WebRTC ICE/UDP: PÚBLICO (los paquetes de video viajan por acá).
-      - "8189:8189/udp"
-      # WebRTC signaling: SOLO loopback (lo consume el nginx del host).
-      - "127.0.0.1:8889:8889/tcp"
-    networks:
-      - monitoring_net
-
-  # 2. Servidor de la página estática (Nginx dentro de Docker)
-  dashboard_web:
+  dashboard:
     image: nginx:alpine
-    container_name: dashboard_drones
+    container_name: dashboard
     restart: unless-stopped
     volumes:
       - ./html:/usr/share/nginx/html:ro
-    ports:
-      # Solo loopback: el nginx del host lo proxea con TLS + Authelia.
-      - "127.0.0.1:18082:80/tcp"
     networks:
-      - monitoring_net
+      - proxy-net
 
-  # 3. Auth-service: autorización fina + datos de UI
-  # Authelia maneja la AUTENTICACIÓN. Este servicio solo:
-  #   - filtra la lista de cámaras que el user puede ver (companies.yml)
-  #   - chequea si un path WebRTC específico está permitido para ese user
-  # Recibe el username vía header Remote-User que inyecta nginx tras
-  # validar la sesión contra Authelia.
   auth_service:
     build: ./auth-service
     container_name: auth_service
     restart: unless-stopped
     environment:
-      # Token de WeatherFlow Tempest para consultar estaciones meteo.
-      # El auth-service hace de proxy para no exponer el token al browser.
       WEATHERFLOW_TOKEN: ${WEATHERFLOW_TOKEN}
     volumes:
       - ./companies.yml:/app/companies.yml:ro
-    ports:
-      # Solo loopback: el nginx del host lo proxea en /center-auth/
-      - "127.0.0.1:19100:19100/tcp"
     networks:
-      - monitoring_net
+      - proxy-net
 
-  # 4. Authelia: autenticación (login, sesión, 2FA, brute force, audit)
   authelia:
     image: authelia/authelia:4.38
     container_name: authelia
@@ -66,20 +37,16 @@ services:
       AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET: ${AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET}
     volumes:
       - ./authelia/configuration.yml:/config/configuration.yml:ro
-      # users_database.yml es RW porque Authelia escribe metadata 2FA en él
+      # users_database.yml es RW: Authelia escribe metadata de 2FA
       - ./authelia/users_database.yml:/config/users_database.yml
-      # Persistencia de SQLite (sesiones, TOTP, regulación) y notifications.txt
       - authelia_data:/config/data
-    ports:
-      # Solo loopback: el nginx del host lo proxea en /authelia/ y
-      # vía auth_request en /internal/authelia/authz
-      - "127.0.0.1:9091:9091/tcp"
     networks:
-      - monitoring_net
+      - proxy-net
 
 networks:
-  monitoring_net:
-    driver: bridge
+  proxy-net:
+    external: true
+    name: proxy-net
 
 volumes:
   authelia_data:
