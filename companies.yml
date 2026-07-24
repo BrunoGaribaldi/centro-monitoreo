@@ -21,6 +21,8 @@ companies:
             titulo: "CAm-Q1 · Térmica (IR)"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
+          - path: CAm-Q1-angular-anotada
+            titulo: "CAm-Q1 · angular (IA)"
       canadon-leon:
         display: "Cañadón Leon"
         cameras:
@@ -30,6 +32,8 @@ companies:
             titulo: "CL-Q1 · Térmica (IR)"
           - path: dock-CL
             titulo: "CL · dock"
+          - path: CL-Q1-angular-anotada
+            titulo: "CL-Q1 · angular (IA)"
         # Estaciones meteorológicas WeatherFlow Tempest del sitio.
         # Si el sitio tiene varias estaciones, agregar más items.
         # Si no tiene ninguna, omitir la key `weather_stations`.
