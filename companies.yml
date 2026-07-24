@@ -94,6 +94,11 @@ users:
     empresa: QUINTANA
     rol: admin_empresa
 
+  # Admin de QUINTANA (Gonza) — ve todo lo de la empresa
+  - username: gonza_quintana
+    empresa: QUINTANA
+    rol: admin_empresa
+
   # Supervisor de Cañadón Amarillo — ve solo ese site
   - username: supervisor_ca
     empresa: QUINTANA
