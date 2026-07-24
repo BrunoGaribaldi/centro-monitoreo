@@ -18,7 +18,7 @@ companies:
           - path: dron-CAm-Q1-angular
             titulo: "CAm-Q1 · Gran angular"
           - path: dron-CAm-Q1-infrarojo
-            titulo: "CAm-Q1 · Térmica (IR)"
+            titulo: "CAm-Q1 · lente activo (IR de noche)"
           - path: dock-cam-dock-1
             titulo: "Dock 1"
           - path: CAm-Q1-angular-anotada
@@ -29,7 +29,7 @@ companies:
           - path: dron-CL-Q1-angular
             titulo: "CL-Q1 · Gran angular"
           - path: dron-CL-Q1-infrarojo
-            titulo: "CL-Q1 · Térmica (IR)"
+            titulo: "CL-Q1 · lente activo (IR de noche)"
           - path: dock-CL
             titulo: "CL · dock"
           - path: CL-Q1-angular-anotada
